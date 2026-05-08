@@ -30,6 +30,7 @@
         linear-gradient(145deg, var(--bg) 0%, #0b1230 45%, #14122a 100%);
       min-height: 100vh;
       line-height: 1.5;
+      scroll-behavior: smooth;
     }
 
     .container {
@@ -69,6 +70,14 @@
       font-size: 1.06rem;
     }
 
+    .hero-cta {
+      margin-top: 28px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      animation: pulseGlow 2.4s infinite;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -101,6 +110,36 @@
       border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 20px;
       padding: 24px;
+    }
+
+    .practice {
+      margin-bottom: 34px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.24);
+    }
+
+    .practice h2 {
+      margin: 0 0 8px;
+      font-size: 1.45rem;
+      letter-spacing: -0.01em;
+    }
+
+    .practice p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    .practice-steps {
+      margin: 0;
+      padding-left: 20px;
+      color: #e8edff;
+    }
+
+    .practice-steps li {
+      margin-bottom: 8px;
     }
 
     .quiz h2 {
@@ -152,6 +191,40 @@
       filter: brightness(1.05);
     }
 
+    .fade-in {
+      opacity: 0;
+      transform: translateY(24px);
+      animation: fadeSlideUp 0.8s ease forwards;
+    }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.25s; }
+    .delay-3 { animation-delay: 0.4s; }
+    .delay-4 { animation-delay: 0.55s; }
+
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseGlow {
+      0% {
+        box-shadow: 0 0 0 0 rgba(125, 226, 209, 0.45);
+      }
+      70% {
+        box-shadow: 0 0 0 16px rgba(125, 226, 209, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(125, 226, 209, 0);
+      }
+    }
+
     #quiz-result {
       margin-top: 16px;
       min-height: 28px;
@@ -169,15 +242,16 @@
 </head>
 <body>
   <main class="container">
-    <section class="hero">
+    <section class="hero fade-in delay-1">
       <h1>Осознанность — это <span>тихая суперсила</span>, которая возвращает тебя в настоящий момент</h1>
       <p>
         Когда мы действуем на автопилоте, день проходит в спешке и усталости.
         Осознанность помогает замечать свои мысли, эмоции и реакции — и выбирать, как жить, а не просто реагировать.
       </p>
+      <button type="button" id="start-practice" class="hero-cta">Начать практику</button>
     </section>
 
-    <section class="cards" aria-label="Польза осознанности">
+    <section class="cards fade-in delay-2" aria-label="Польза осознанности">
       <article class="card">
         <h3>Меньше стресса</h3>
         <p>Ты быстрее замечаешь напряжение и умеешь переключаться в спокойное состояние.</p>
@@ -196,7 +270,17 @@
       </article>
     </section>
 
-    <section class="quiz">
+    <section class="practice fade-in delay-3" id="practice">
+      <h2>Практика «1 минута здесь и сейчас»</h2>
+      <p>Эта короткая техника помогает быстро вернуть внимание в тело и снизить внутренний шум.</p>
+      <ol class="practice-steps">
+        <li>Сделай медленный вдох на 4 счёта и мягкий выдох на 6 счётов.</li>
+        <li>Назови про себя 3 звука вокруг, 2 ощущения в теле и 1 эмоцию внутри.</li>
+        <li>Спроси себя: «Что сейчас действительно важно для меня?»</li>
+      </ol>
+    </section>
+
+    <section class="quiz fade-in delay-4">
       <h2>Мини-тест: насколько ты осознан(а) в течение дня?</h2>
       <p>Выбери по одному варианту в каждом вопросе.</p>
 
@@ -234,6 +318,12 @@
   <script>
     const quizForm = document.getElementById("mindfulness-quiz");
     const resultBlock = document.getElementById("quiz-result");
+    const startPracticeButton = document.getElementById("start-practice");
+    const practiceSection = document.getElementById("practice");
+
+    startPracticeButton.addEventListener("click", function () {
+      practiceSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
 
     quizForm.addEventListener("submit", function (event) {
       event.preventDefault();
