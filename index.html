@@ -232,6 +232,74 @@
       color: var(--ok);
     }
 
+    .quiz-plan {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 14px;
+      background: rgba(8, 16, 37, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      display: none;
+    }
+
+    .quiz-plan.visible {
+      display: block;
+    }
+
+    .quiz-plan-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .quiz-plan h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: #dce5ff;
+      font-weight: 600;
+    }
+
+    .btn-copy-plan {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      font-weight: 600;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      animation: none;
+    }
+
+    .btn-copy-plan:hover {
+      background: rgba(255, 255, 255, 0.18);
+      filter: none;
+    }
+
+    .copy-feedback {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--accent);
+      min-height: 1.3em;
+    }
+
+    .quiz-plan ul {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .quiz-plan li {
+      margin-bottom: 6px;
+    }
+
+    .quiz-plan li:last-child {
+      margin-bottom: 0;
+    }
+
     footer {
       margin-top: 20px;
       text-align: center;
@@ -281,8 +349,8 @@
     </section>
 
     <section class="quiz fade-in delay-4">
-      <h2>Мини-тест: насколько ты осознан(а) в течение дня?</h2>
-      <p>Выбери по одному варианту в каждом вопросе.</p>
+      <h2>Расширенный тест: насколько ты осознан(а) в течение дня?</h2>
+      <p>Выбери по одному варианту в каждом из 6 вопросов.</p>
 
       <form id="mindfulness-quiz">
         <fieldset>
@@ -306,10 +374,32 @@
           <label class="option"><input type="radio" name="q3" value="2">Сначала дышу и наблюдаю реакцию</label>
         </fieldset>
 
+        <fieldset>
+          <legend>4) Как часто ты ешь не отвлекаясь на экран?</legend>
+          <label class="option"><input type="radio" name="q4" value="0">Почти никогда</label>
+          <label class="option"><input type="radio" name="q4" value="1">Иногда получается</label>
+          <label class="option"><input type="radio" name="q4" value="2">Часто ем осознанно</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>5) Замечаешь ли ты, когда устаёшь и нужен перерыв?</legend>
+          <label class="option"><input type="radio" name="q5" value="0">Обычно понимаю слишком поздно</label>
+          <label class="option"><input type="radio" name="q5" value="1">Иногда замечаю вовремя</label>
+          <label class="option"><input type="radio" name="q5" value="2">Регулярно отслеживаю состояние</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>6) Насколько осознанно ты планируешь свой день?</legend>
+          <label class="option"><input type="radio" name="q6" value="0">Живу в режиме «как получится»</label>
+          <label class="option"><input type="radio" name="q6" value="1">Есть примерный план</label>
+          <label class="option"><input type="radio" name="q6" value="2">Есть приоритеты и паузы на восстановление</label>
+        </fieldset>
+
         <button type="submit">Узнать результат</button>
       </form>
 
       <div id="quiz-result" aria-live="polite"></div>
+      <div id="quiz-plan" class="quiz-plan" aria-live="polite"></div>
     </section>
 
     <footer>Осознанность начинается с одного глубокого вдоха.</footer>
@@ -318,8 +408,85 @@
   <script>
     const quizForm = document.getElementById("mindfulness-quiz");
     const resultBlock = document.getElementById("quiz-result");
+    const planBlock = document.getElementById("quiz-plan");
     const startPracticeButton = document.getElementById("start-practice");
     const practiceSection = document.getElementById("practice");
+    let lastPlanClipboard = "";
+
+    function renderPlan(resultText, steps) {
+      planBlock.textContent = "";
+      const lines = steps.map(function (step, i) {
+        return (i + 1) + ". " + step;
+      });
+      lastPlanClipboard =
+        resultText +
+        "\n\n" +
+        "Короткий план на неделю\n" +
+        lines.join("\n");
+
+      const header = document.createElement("div");
+      header.className = "quiz-plan-header";
+      const heading = document.createElement("h3");
+      heading.textContent = "Короткий план на неделю";
+      const copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "btn-copy-plan";
+      copyBtn.id = "copy-plan";
+      copyBtn.textContent = "Скопировать план";
+      header.appendChild(heading);
+      header.appendChild(copyBtn);
+
+      const list = document.createElement("ul");
+      steps.forEach(function (step) {
+        const li = document.createElement("li");
+        li.textContent = step;
+        list.appendChild(li);
+      });
+
+      const feedback = document.createElement("span");
+      feedback.className = "copy-feedback";
+      feedback.id = "copy-plan-feedback";
+      feedback.setAttribute("aria-live", "polite");
+
+      planBlock.appendChild(header);
+      planBlock.appendChild(list);
+      planBlock.appendChild(feedback);
+      planBlock.classList.add("visible");
+    }
+
+    function hidePlan() {
+      planBlock.textContent = "";
+      planBlock.classList.remove("visible");
+      lastPlanClipboard = "";
+    }
+
+    planBlock.addEventListener("click", function (e) {
+      const btn = e.target.closest("#copy-plan");
+      if (!btn || !lastPlanClipboard) {
+        return;
+      }
+      const feedback = document.getElementById("copy-plan-feedback");
+      function showFb(text, ok) {
+        if (feedback) {
+          feedback.textContent = text;
+          feedback.style.color = ok ? "var(--accent)" : "#ffb4b4";
+        }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(lastPlanClipboard).then(function () {
+          showFb("Скопировано в буфер обмена", true);
+          setTimeout(function () {
+            if (feedback) {
+              feedback.textContent = "";
+            }
+          }, 2500);
+        }).catch(function () {
+          showFb("Не удалось скопировать автоматически — выдели текст вручную.", false);
+        });
+      } else {
+        showFb("Браузер не поддерживает копирование — выдели текст вручную.", false);
+      }
+    });
 
     startPracticeButton.addEventListener("click", function () {
       practiceSection.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -329,12 +496,13 @@
       event.preventDefault();
 
       const formData = new FormData(quizForm);
-      const requiredKeys = ["q1", "q2", "q3"];
+      const requiredKeys = ["q1", "q2", "q3", "q4", "q5", "q6"];
       const hasAllAnswers = requiredKeys.every((key) => formData.get(key) !== null);
 
       if (!hasAllAnswers) {
         resultBlock.textContent = "Пожалуйста, ответь на все вопросы.";
         resultBlock.style.color = "#ffe599";
+        hidePlan();
         return;
       }
 
@@ -344,16 +512,58 @@
       });
 
       let message = "";
-      if (score <= 2) {
-        message = "Тебе полезно добавить короткие паузы в день: 1 минута дыхания каждые 2-3 часа.";
-      } else if (score <= 4) {
-        message = "Хороший старт! Осознанность уже есть, попробуй закрепить привычку ежедневной практикой 5 минут.";
+      let planSteps = [];
+
+      if (score <= 3) {
+        message = "Уровень 1/5. Ты часто в режиме автопилота. Начни с 3 осознанных пауз в день по 1 минуте.";
+        planSteps = [
+          "Каждый день утром до телефона: 1 минута наблюдения за дыханием.",
+          "Поставь 3 напоминания-паузы (обед, полдень, вечер): встать, расслабить плечи, 3 медленных вдоха.",
+          "Один приём пищи в день — только еда, без экранов.",
+          "Перед сном выпиши одну строку: «Сегодня я заметил(а)…»",
+          "В конце недели вернись к тесту и сравни самочувствие.",
+        ];
+      } else if (score <= 6) {
+        message = "Уровень 2/5. Осознанность появляется эпизодически. Добавь ритуал: 5 минут тишины утром и вечером.";
+        planSteps = [
+          "Утро и вечер по 5 минут: тихая пауза (сидеть, слушать дыхание, без контента).",
+          "При раздражении — правило 10 секунд: пауза, вдох, потом слова или действие.",
+          "Два раза в день спрашивай себя: «Что со мной с телом прямо сейчас?»",
+          "Раз в неделю пройди блок практики на странице сверху вниз, как чеклист.",
+          "Празднуй маленький прогресс: отметка в календаре за каждый день без пропуска ритуала.",
+        ];
+      } else if (score <= 8) {
+        message = "Уровень 3/5. Хорошая база уже есть. Твоя следующая точка роста — больше внимания к телу и дыханию.";
+        planSteps = [
+          "Ежедневно 7–10 минут: перемещение внимания по телу (стопы, живот, лицо).",
+          "Перед задачами: назови намерение в одном предложении («Сейчас я делаю X, чтобы…»).",
+          "В стрессе добавь расширенный выдох (вдох 4 — выдох 6–8) три раза подряд.",
+          "Выбери «якорь» осознанности (колено, ключи у двери) и в эти точки делай один осознанный вдох.",
+          "Под конец недели выбери одну привычку (сон, телефон, еда) и осознанно её смягчи.",
+        ];
+      } else if (score <= 10) {
+        message = "Уровень 4/5. Ты умеешь отслеживать состояние и чаще выбираешь реакцию осознанно. Закрепи привычку короткими практиками каждый день.";
+        planSteps = [
+          "Ежедневно 10–15 минут формальной практики или прогулка без аудио.",
+          "Раз в день наблюдай мысль как облако: заметил(а), подписал(а), отпустил(а).",
+          "Раз в неделю — час или полдня без уведомлений, заранее запланируй его.",
+          "Калибровка после сложных разговоров: «Что я чувствую? что мне нужно?» записать в два пункта.",
+          "Поделись с кем-то одной наблюденной паузой — закрепляй навык в жизни, не только в голове.",
+        ];
       } else {
-        message = "Отличный уровень осознанности! Ты умеешь быть в моменте и управлять вниманием.";
+        message = "Уровень 5/5. Сильный навык осознанности: ты замечаешь свои состояния и управляешь вниманием даже в напряжённые моменты.";
+        planSteps = [
+          "Поддерживай базу: 10–20 минут в день — та практика, которая тебе заходит.",
+          "Один раз в неделю — «ревизия намерений»: три приоритета и одна вещь, которую отпускаешь.",
+          "Напряжённые дни усили контактом с телом: прогулка, стопы, температура воды как якорь.",
+          "Помощь другим: одна маленькая фраза осознанного слушания в день (без советов сразу).",
+          "Смотри не только на результат недели — отмечай качество присутствия в маленьких моментах.",
+        ];
       }
 
       resultBlock.textContent = message;
       resultBlock.style.color = "#87f5a5";
+      renderPlan(message, planSteps);
     });
   </script>
 </body>
