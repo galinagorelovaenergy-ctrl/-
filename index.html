@@ -169,10 +169,23 @@
       margin-bottom: 8px;
       color: #f1f5ff;
       cursor: pointer;
+      transition: transform 0.2s ease, filter 0.2s ease;
     }
 
     .option input {
       margin-right: 8px;
+    }
+
+    .option-anim-1 {
+      animation: optionBounce 0.3s ease;
+    }
+
+    .option-anim-2 {
+      animation: optionGlow 0.45s ease;
+    }
+
+    .option-anim-3 {
+      animation: optionSweep 0.35s ease;
     }
 
     button {
@@ -222,6 +235,35 @@
       }
       100% {
         box-shadow: 0 0 0 0 rgba(125, 226, 209, 0);
+      }
+    }
+
+    @keyframes optionBounce {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes optionGlow {
+      0% { filter: brightness(1); }
+      50% { filter: brightness(1.25); }
+      100% { filter: brightness(1); }
+    }
+
+    @keyframes optionSweep {
+      0% { transform: translateX(0); }
+      30% { transform: translateX(5px); }
+      60% { transform: translateX(-3px); }
+      100% { transform: translateX(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .option,
+      .option-anim-1,
+      .option-anim-2,
+      .option-anim-3 {
+        animation: none !important;
+        transition: none;
       }
     }
 
@@ -412,6 +454,62 @@
     const startPracticeButton = document.getElementById("start-practice");
     const practiceSection = document.getElementById("practice");
     let lastPlanClipboard = "";
+    let audioContext = null;
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    function playOptionSound(optionIndex) {
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === "suspended") {
+          ctx.resume();
+        }
+        const now = ctx.currentTime;
+        const soundMap = {
+          1: [350, 480],
+          2: [430, 570],
+          3: [520, 700],
+        };
+        const [f1, f2] = soundMap[optionIndex] || soundMap[1];
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.21);
+        gain.connect(ctx.destination);
+
+        [f1, f2].forEach(function (frequency, i) {
+          const osc = ctx.createOscillator();
+          osc.type = i === 0 ? "triangle" : "sine";
+          osc.frequency.setValueAtTime(frequency, now + i * 0.06);
+          osc.connect(gain);
+          osc.start(now + i * 0.06);
+          osc.stop(now + 0.22 + i * 0.04);
+        });
+      } catch (e) {
+        // If audio is unavailable, UI should still work without errors.
+      }
+    }
+
+    function animateOption(optionLabel, optionIndex) {
+      const classes = {
+        1: "option-anim-1",
+        2: "option-anim-2",
+        3: "option-anim-3",
+      };
+      const animationClass = classes[optionIndex] || classes[1];
+      optionLabel.classList.remove("option-anim-1", "option-anim-2", "option-anim-3");
+      // Force reflow so repeated clicks replay the animation.
+      void optionLabel.offsetWidth;
+      optionLabel.classList.add(animationClass);
+      setTimeout(function () {
+        optionLabel.classList.remove(animationClass);
+      }, 500);
+    }
 
     function renderPlan(resultText, steps) {
       planBlock.textContent = "";
@@ -490,6 +588,21 @@
 
     startPracticeButton.addEventListener("click", function () {
       practiceSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    quizForm.addEventListener("change", function (event) {
+      const input = event.target;
+      if (!input || input.type !== "radio") {
+        return;
+      }
+
+      const optionLabel = input.closest(".option");
+      const optionIndex = Number(input.value) + 1;
+
+      if (optionLabel) {
+        animateOption(optionLabel, optionIndex);
+      }
+      playOptionSound(optionIndex);
     });
 
     quizForm.addEventListener("submit", function (event) {
