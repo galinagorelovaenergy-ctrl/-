@@ -71,6 +71,15 @@
       height: 100% !important;
     }
 
+    .svg-filter-defs {
+      position: absolute;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+      pointer-events: none;
+      clip: rect(0, 0, 0, 0);
+    }
+
     body::after {
       content: "";
       position: fixed;
@@ -190,28 +199,151 @@
       font-size: 1.08rem;
     }
 
-    .hero-cta {
-      margin-top: 26px;
+    /* —— Liquid glass buttons (адаптация GlassButton / react-bits) —— */
+    .btn-glass {
+      --glass-reflex-light: 1;
+      --glass-reflex-dark: 1;
+      position: relative;
+      isolation: isolate;
       display: inline-flex;
       align-items: center;
-      gap: 10px;
+      justify-content: center;
+      gap: 0.5rem;
+      appearance: none;
+      cursor: pointer;
+      border: none;
       font-family: var(--font-display);
-      font-size: 1rem;
       font-weight: 600;
       letter-spacing: 0.02em;
-      padding: 14px 26px;
-      border-radius: 4px 20px 4px 20px;
-      background: var(--accent);
-      color: #1a1408;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      box-shadow: 0 14px 36px rgba(232, 197, 71, 0.22);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+      overflow: hidden;
+      transition:
+        transform 0.38s cubic-bezier(1, 0, 0.4, 1),
+        box-shadow 0.38s cubic-bezier(1, 0, 0.4, 1),
+        filter 0.25s ease;
     }
 
-    .hero-cta:hover {
-      transform: translateY(-2px) rotate(-0.35deg);
-      filter: brightness(1.04);
-      box-shadow: 0 20px 44px rgba(232, 197, 71, 0.28);
+    .btn-glass:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-glass__lens {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      background-color: rgba(244, 238, 232, 0.07);
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      backdrop-filter: blur(10px) url(#liquid-glass-main) saturate(150%);
+      box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.1)),
+        inset 1.8px 3px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.9)),
+        inset -2px -2px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.8)),
+        inset -3px -8px 1px -6px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.6)),
+        inset -0.3px -1px 4px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.12)),
+        inset -1.5px 2.5px 0 -2px rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.2)),
+        inset 0 3px 4px -2px rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.2)),
+        inset 2px -6.5px 1px -4px rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.1)),
+        0 1px 5px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.1)),
+        0 8px 22px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.14));
+      transition:
+        background-color 0.4s cubic-bezier(1, 0, 0.4, 1),
+        box-shadow 0.4s cubic-bezier(1, 0, 0.4, 1);
+    }
+
+    .btn-glass__lens::after {
+      content: "";
+      position: absolute;
+      inset: -50% -30%;
+      background: linear-gradient(
+        105deg,
+        transparent 38%,
+        rgba(255, 255, 255, 0.22) 50%,
+        transparent 62%
+      );
+      transform: translateX(-130%) skewX(-14deg);
+      animation: glassShimmer 6s ease-in-out infinite;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    @keyframes glassShimmer {
+      0%,
+      100% {
+        transform: translateX(-130%) skewX(-14deg);
+        opacity: 0;
+      }
+      12% {
+        opacity: 0.55;
+      }
+      45% {
+        opacity: 0.28;
+      }
+      58% {
+        transform: translateX(130%) skewX(-14deg);
+        opacity: 0.15;
+      }
+      70% {
+        opacity: 0;
+      }
+    }
+
+    .btn-glass__text {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: inherit;
+      user-select: none;
+      text-shadow: 0 1px 2px rgba(12, 10, 8, 0.32);
+      transition: color 0.4s cubic-bezier(1, 0, 0.4, 1);
+    }
+
+    .btn-glass--accent .btn-glass__lens {
+      background-color: rgba(232, 197, 71, 0.18);
+    }
+
+    .btn-glass--accent .btn-glass__text {
+      color: #1a1408;
+    }
+
+    .btn-glass--ghost .btn-glass__lens {
+      background-color: rgba(244, 238, 232, 0.06);
+    }
+
+    .btn-glass--ghost .btn-glass__text {
+      color: var(--text);
+    }
+
+    @media (hover: hover) {
+      .btn-glass:not(:disabled):hover {
+        transform: scale(1.03);
+      }
+
+      .btn-glass:not(:disabled):hover .btn-glass__lens {
+        background-color: rgba(244, 238, 232, 0.11);
+      }
+
+      .btn-glass--accent:not(:disabled):hover .btn-glass__lens {
+        background-color: rgba(232, 197, 71, 0.26);
+      }
+    }
+
+    .btn-glass:not(:disabled):active {
+      transform: scale(0.96);
+    }
+
+    .hero-cta {
+      margin-top: 26px;
+      font-size: 1rem;
+      padding: 14px 26px;
+      border-radius: 4px 20px 4px 20px;
+    }
+
+    .hero-cta.btn-glass:not(:disabled):hover {
+      transform: scale(1.03) translateY(-2px);
     }
 
     .section-label {
@@ -528,25 +660,11 @@
       animation: optionSweep 0.35s ease;
     }
 
-    button:not(.hero-cta):not(.btn-copy-plan) {
+    .btn-glass-submit {
       margin-top: 8px;
-      font-family: var(--font-display);
       font-size: 1.02rem;
-      font-weight: 600;
-      border: 1px solid rgba(0, 0, 0, 0.15);
-      border-radius: 6px 22px 6px 22px;
-      background: var(--accent);
-      color: #1a1408;
       padding: 13px 28px;
-      cursor: pointer;
-      box-shadow: 0 12px 32px rgba(232, 197, 71, 0.2);
-      transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    button:not(.hero-cta):not(.btn-copy-plan):hover {
-      transform: translateY(-1px);
-      filter: brightness(1.03);
-      box-shadow: 0 16px 40px rgba(232, 197, 71, 0.26);
+      border-radius: 6px 22px 6px 22px;
     }
 
     button:focus-visible {
@@ -616,8 +734,12 @@
 
       .hero,
       .hero-cta,
-      button:not(.hero-cta):not(.btn-copy-plan) {
+      .btn-glass-submit {
         transform: none !important;
+      }
+
+      .btn-glass__lens::after {
+        animation: none !important;
       }
 
       .option,
@@ -703,22 +825,21 @@
       font-weight: 600;
     }
 
-    .btn-copy-plan {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--stroke-strong);
-      font-family: var(--font-display);
-      font-weight: 600;
+    .btn-copy-plan.btn-glass {
       font-size: 0.88rem;
-      padding: 9px 16px;
+      padding: 9px 18px;
       border-radius: 4px 16px 4px 16px;
-      box-shadow: none;
-      transition: background 0.2s ease, border-color 0.2s ease;
     }
 
-    .btn-copy-plan:hover {
-      background: rgba(244, 238, 232, 0.06);
-      border-color: rgba(232, 197, 71, 0.45);
+    .btn-copy-plan.btn-glass:not(:disabled):hover .btn-glass__lens {
+      box-shadow:
+        inset 0 0 0 1px rgba(232, 197, 71, 0.35),
+        inset 1.8px 3px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.95)),
+        inset -2px -2px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.75)),
+        inset -3px -8px 1px -6px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
+        inset -0.3px -1px 4px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.12)),
+        inset -1.5px 2.5px 0 -2px rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.18)),
+        0 4px 14px rgba(0, 0, 0, 0.12);
     }
 
     .copy-feedback {
@@ -927,6 +1048,23 @@
 </head>
 <body>
   <div id="magic-rings-bg" class="magic-rings-container" aria-hidden="true"></div>
+  <svg class="svg-filter-defs" aria-hidden="true" width="0" height="0">
+    <defs>
+      <filter
+        id="liquid-glass-main"
+        color-interpolation-filters="sRGB"
+        primitiveUnits="objectBoundingBox"
+        x="0"
+        y="0"
+        width="100%"
+        height="100%"
+      >
+        <feTurbulence type="fractalNoise" baseFrequency="0.045 0.055" numOctaves="4" seed="11" result="map" />
+        <feGaussianBlur in="SourceGraphic" stdDeviation="0.012" result="blur" />
+        <feDisplacementMap in="blur" in2="map" scale="0.48" xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
   <main class="container">
     <section
       class="hero border-glow-card fade-in delay-1"
@@ -951,7 +1089,10 @@
           Когда мы действуем на автопилоте, день проходит в спешке и усталости.
           Осознанность помогает замечать свои мысли, эмоции и реакции — и выбирать, как жить, а не просто реагировать.
         </p>
-        <button type="button" id="start-practice" class="hero-cta">Начать практику</button>
+        <button type="button" id="start-practice" class="hero-cta btn-glass btn-glass--accent">
+          <span class="btn-glass__lens" aria-hidden="true"></span>
+          <span class="btn-glass__text">Начать практику</span>
+        </button>
       </div>
       </div>
     </section>
@@ -1065,7 +1206,10 @@
           <label class="option"><input type="radio" name="q6" value="2">Есть приоритеты и паузы на восстановление</label>
         </fieldset>
 
-        <button type="submit">Узнать результат</button>
+        <button type="submit" class="btn-glass btn-glass--accent btn-glass-submit">
+          <span class="btn-glass__lens" aria-hidden="true"></span>
+          <span class="btn-glass__text">Узнать результат</span>
+        </button>
       </form>
 
       <div id="quiz-result" aria-live="polite"></div>
@@ -1941,9 +2085,16 @@
       heading.textContent = "Короткий план на неделю";
       var copyBtn = document.createElement("button");
       copyBtn.type = "button";
-      copyBtn.className = "btn-copy-plan";
+      copyBtn.className = "btn-copy-plan btn-glass btn-glass--ghost";
       copyBtn.id = "copy-plan";
-      copyBtn.textContent = "Скопировать план";
+      var copyLens = document.createElement("span");
+      copyLens.className = "btn-glass__lens";
+      copyLens.setAttribute("aria-hidden", "true");
+      var copyText = document.createElement("span");
+      copyText.className = "btn-glass__text";
+      copyText.textContent = "Скопировать план";
+      copyBtn.appendChild(copyLens);
+      copyBtn.appendChild(copyText);
       header.appendChild(heading);
       header.appendChild(copyBtn);
 
