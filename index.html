@@ -44,13 +44,31 @@
       color: var(--text);
       background-color: var(--bg-deep);
       background-image:
-        radial-gradient(ellipse 130% 90% at 0% -10%, rgba(232, 197, 71, 0.14) 0%, transparent 52%),
-        radial-gradient(ellipse 80% 70% at 100% 0%, rgba(120, 160, 140, 0.1) 0%, transparent 48%),
+        radial-gradient(ellipse 130% 90% at 0% -10%, rgba(232, 197, 71, 0.1) 0%, transparent 52%),
+        radial-gradient(ellipse 80% 70% at 100% 0%, rgba(120, 160, 140, 0.08) 0%, transparent 48%),
         radial-gradient(ellipse 60% 50% at 50% 110%, rgba(28, 25, 21, 0.95) 0%, transparent 55%),
         linear-gradient(168deg, var(--bg) 0%, var(--bg-deep) 55%, #161311 100%);
       min-height: 100vh;
       line-height: 1.62;
       position: relative;
+      isolation: isolate;
+    }
+
+    .magic-rings-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.38;
+      mix-blend-mode: soft-light;
+    }
+
+    .magic-rings-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
     }
 
     body::after {
@@ -578,6 +596,14 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .magic-rings-container {
+        display: none !important;
+      }
+
+      .quiz-plan-shapeblur {
+        display: none !important;
+      }
+
       body::after {
         animation: none;
       }
@@ -705,12 +731,6 @@
 
     .quiz-plan-body .copy-feedback {
       margin-top: 12px;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .quiz-plan-shapeblur {
-        display: none !important;
-      }
     }
 
     .quiz-plan ul {
@@ -906,6 +926,7 @@
   </style>
 </head>
 <body>
+  <div id="magic-rings-bg" class="magic-rings-container" aria-hidden="true"></div>
   <main class="container">
     <section
       class="hero border-glow-card fade-in delay-1"
@@ -1056,6 +1077,317 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <script>
+    (function initMagicRingsBackground() {
+      function mountMagicRings(mount, userProps) {
+        var THREE = window.THREE;
+        if (!THREE || !mount) {
+          return function () {};
+        }
+
+        var p = {
+          color: "#c4a035",
+          colorTwo: "#6b9b7a",
+          speed: 1,
+          ringCount: 6,
+          attenuation: 10,
+          lineThickness: 2,
+          baseRadius: 0.35,
+          radiusStep: 0.1,
+          scaleRate: 0.1,
+          opacity: 0.85,
+          noiseAmount: 0.1,
+          rotation: 0,
+          ringGap: 1.5,
+          fadeIn: 0.7,
+          fadeOut: 0.5,
+          followMouse: false,
+          mouseInfluence: 0.2,
+          hoverScale: 1.2,
+          parallax: 0.05,
+          clickBurst: false,
+          blur: 0,
+        };
+        if (userProps) {
+          for (var k in userProps) {
+            if (Object.prototype.hasOwnProperty.call(userProps, k)) {
+              p[k] = userProps[k];
+            }
+          }
+        }
+
+        var renderer;
+        try {
+          renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
+        } catch (e) {
+          return function () {};
+        }
+
+        renderer.setClearColor(0x000000, 0);
+        mount.appendChild(renderer.domElement);
+
+        if (p.blur > 0) {
+          mount.style.filter = "blur(" + p.blur + "px)";
+        }
+
+        var scene = new THREE.Scene();
+        var camera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 10);
+        camera.position.z = 1;
+
+        var uniforms = {
+          uTime: { value: 0 },
+          uAttenuation: { value: 0 },
+          uResolution: { value: new THREE.Vector2() },
+          uColor: { value: new THREE.Color() },
+          uColorTwo: { value: new THREE.Color() },
+          uLineThickness: { value: 0 },
+          uBaseRadius: { value: 0 },
+          uRadiusStep: { value: 0 },
+          uScaleRate: { value: 0 },
+          uRingCount: { value: 0 },
+          uOpacity: { value: 1 },
+          uNoiseAmount: { value: 0 },
+          uRotation: { value: 0 },
+          uRingGap: { value: 1.6 },
+          uFadeIn: { value: 0.5 },
+          uFadeOut: { value: 0.75 },
+          uMouse: { value: new THREE.Vector2() },
+          uMouseInfluence: { value: 0 },
+          uHoverAmount: { value: 0 },
+          uHoverScale: { value: 1 },
+          uParallax: { value: 0 },
+          uBurst: { value: 0 },
+        };
+
+        var vertexShader =
+          "void main() {\n" +
+          "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n" +
+          "}\n";
+
+        var fragmentShader = [
+          "precision highp float;",
+          "uniform float uTime, uAttenuation, uLineThickness;",
+          "uniform float uBaseRadius, uRadiusStep, uScaleRate;",
+          "uniform float uOpacity, uNoiseAmount, uRotation, uRingGap;",
+          "uniform float uFadeIn, uFadeOut;",
+          "uniform float uMouseInfluence, uHoverAmount, uHoverScale, uParallax, uBurst;",
+          "uniform vec2 uResolution, uMouse;",
+          "uniform vec3 uColor, uColorTwo;",
+          "uniform int uRingCount;",
+          "const float HP = 1.5707963;",
+          "const float CYCLE = 3.45;",
+          "float fade(float t) {",
+          "  return t < uFadeIn ? smoothstep(0.0, uFadeIn, t) : 1.0 - smoothstep(uFadeOut, CYCLE - 0.2, t);",
+          "}",
+          "float ring(vec2 p, float ri, float cut, float t0, float px) {",
+          "  float t = mod(uTime + t0, CYCLE);",
+          "  float r = ri + t / CYCLE * uScaleRate;",
+          "  float d = abs(length(p) - r);",
+          "  float a = atan(abs(p.y), abs(p.x)) / HP;",
+          "  float th = max(1.0 - a, 0.5) * px * uLineThickness;",
+          "  float h = (1.0 - smoothstep(th, th * 1.5, d)) + 1.0;",
+          "  d += pow(cut * a, 3.0) * r;",
+          "  return h * exp(-uAttenuation * d) * fade(t);",
+          "}",
+          "void main() {",
+          "  float px = 1.0 / min(uResolution.x, uResolution.y);",
+          "  vec2 p = (gl_FragCoord.xy - 0.5 * uResolution.xy) * px;",
+          "  float cr = cos(uRotation), sr = sin(uRotation);",
+          "  p = mat2(cr, -sr, sr, cr) * p;",
+          "  p -= uMouse * uMouseInfluence;",
+          "  float sc = mix(1.0, uHoverScale, uHoverAmount) + uBurst * 0.3;",
+          "  p /= sc;",
+          "  vec3 c = vec3(0.0);",
+          "  float rcf = max(float(uRingCount) - 1.0, 1.0);",
+          "  for (int i = 0; i < 10; i++) {",
+          "    if (i >= uRingCount) break;",
+          "    float fi = float(i);",
+          "    vec2 pr = p - fi * uParallax * uMouse;",
+          "    vec3 rc = mix(uColor, uColorTwo, fi / rcf);",
+          "    c = mix(c, rc, vec3(ring(pr, uBaseRadius + fi * uRadiusStep, pow(uRingGap, fi), i == 0 ? 0.0 : 2.95 * fi, px)));",
+          "  }",
+          "  c *= 1.0 + uBurst * 2.0;",
+          "  float n = fract(sin(dot(gl_FragCoord.xy + uTime * 100.0, vec2(12.9898, 78.233))) * 43758.5453);",
+          "  c += (n - 0.5) * uNoiseAmount;",
+          "  gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)) * uOpacity);",
+          "}",
+        ].join("\n");
+
+        var material = new THREE.ShaderMaterial({
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader,
+          uniforms: uniforms,
+          transparent: true,
+          depthWrite: false,
+        });
+
+        var quad = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material);
+        scene.add(quad);
+
+        var mouseRef = [0, 0];
+        var smoothMouseRef = [0, 0];
+        var hoverAmountRef = 0;
+        var isHovered = false;
+        var burstRef = 0;
+
+        function resize() {
+          var w = mount.clientWidth || 1;
+          var h = mount.clientHeight || 1;
+          var dpr = Math.min(window.devicePixelRatio || 1, 2);
+          renderer.setSize(w, h, false);
+          renderer.setPixelRatio(dpr);
+          uniforms.uResolution.value.set(w * dpr, h * dpr);
+        }
+
+        resize();
+        window.addEventListener("resize", resize);
+
+        var ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+        if (ro) {
+          ro.observe(mount);
+        }
+
+        function onMouseMove(e) {
+          var rect = mount.getBoundingClientRect();
+          mouseRef[0] = (e.clientX - rect.left) / rect.width - 0.5;
+          mouseRef[1] = -((e.clientY - rect.top) / rect.height - 0.5);
+        }
+
+        function onMouseEnter() {
+          isHovered = true;
+        }
+
+        function onMouseLeave() {
+          isHovered = false;
+          mouseRef[0] = 0;
+          mouseRef[1] = 0;
+        }
+
+        function onClick() {
+          burstRef = 1;
+        }
+
+        var usePointer = p.followMouse || p.clickBurst;
+        if (usePointer) {
+          mount.style.pointerEvents = "auto";
+          mount.addEventListener("mousemove", onMouseMove);
+          mount.addEventListener("mouseenter", onMouseEnter);
+          mount.addEventListener("mouseleave", onMouseLeave);
+          if (p.clickBurst) {
+            mount.addEventListener("click", onClick);
+          }
+        }
+
+        var frameId = 0;
+        function animate(t) {
+          frameId = requestAnimationFrame(animate);
+
+          smoothMouseRef[0] += (mouseRef[0] - smoothMouseRef[0]) * 0.08;
+          smoothMouseRef[1] += (mouseRef[1] - smoothMouseRef[1]) * 0.08;
+          hoverAmountRef += ((isHovered ? 1 : 0) - hoverAmountRef) * 0.08;
+          burstRef *= 0.95;
+          if (burstRef < 0.001) {
+            burstRef = 0;
+          }
+
+          uniforms.uTime.value = t * 0.001 * p.speed;
+          uniforms.uAttenuation.value = p.attenuation;
+          uniforms.uColor.value.set(p.color);
+          uniforms.uColorTwo.value.set(p.colorTwo);
+          uniforms.uLineThickness.value = p.lineThickness;
+          uniforms.uBaseRadius.value = p.baseRadius;
+          uniforms.uRadiusStep.value = p.radiusStep;
+          uniforms.uScaleRate.value = p.scaleRate;
+          uniforms.uRingCount.value = p.ringCount;
+          uniforms.uOpacity.value = p.opacity;
+          uniforms.uNoiseAmount.value = p.noiseAmount;
+          uniforms.uRotation.value = (p.rotation * Math.PI) / 180;
+          uniforms.uRingGap.value = p.ringGap;
+          uniforms.uFadeIn.value = p.fadeIn;
+          uniforms.uFadeOut.value = p.fadeOut;
+          uniforms.uMouse.value.set(smoothMouseRef[0], smoothMouseRef[1]);
+          uniforms.uMouseInfluence.value = p.followMouse ? p.mouseInfluence : 0;
+          uniforms.uHoverAmount.value = hoverAmountRef;
+          uniforms.uHoverScale.value = p.hoverScale;
+          uniforms.uParallax.value = p.parallax;
+          uniforms.uBurst.value = p.clickBurst ? burstRef : 0;
+
+          try {
+            renderer.render(scene, camera);
+          } catch (err) {
+            /* ignore */
+          }
+        }
+
+        frameId = requestAnimationFrame(animate);
+
+        return function disposeMagicRings() {
+          cancelAnimationFrame(frameId);
+          window.removeEventListener("resize", resize);
+          if (ro) {
+            ro.disconnect();
+          }
+          if (usePointer) {
+            mount.removeEventListener("mousemove", onMouseMove);
+            mount.removeEventListener("mouseenter", onMouseEnter);
+            mount.removeEventListener("mouseleave", onMouseLeave);
+            if (p.clickBurst) {
+              mount.removeEventListener("click", onClick);
+            }
+          }
+          if (renderer.domElement && renderer.domElement.parentNode === mount) {
+            mount.removeChild(renderer.domElement);
+          }
+          quad.geometry.dispose();
+          material.dispose();
+          renderer.dispose();
+          if (renderer.forceContextLoss) {
+            renderer.forceContextLoss();
+          }
+        };
+      }
+
+      function tryStart() {
+        var el = document.getElementById("magic-rings-bg");
+        if (!el) {
+          return;
+        }
+        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduced) {
+          return;
+        }
+        mountMagicRings(el, {
+          color: "#c9a227",
+          colorTwo: "#5a8a72",
+          ringCount: 6,
+          speed: 1,
+          attenuation: 10,
+          lineThickness: 2,
+          baseRadius: 0.35,
+          radiusStep: 0.1,
+          scaleRate: 0.1,
+          opacity: 0.9,
+          blur: 0,
+          noiseAmount: 0.1,
+          rotation: 0,
+          ringGap: 1.5,
+          fadeIn: 0.7,
+          fadeOut: 0.5,
+          followMouse: false,
+          mouseInfluence: 0.2,
+          hoverScale: 1.2,
+          parallax: 0.05,
+          clickBurst: false,
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", tryStart);
+      } else {
+        tryStart();
+      }
+    })();
+  </script>
   <script>
     (function initBorderGlowAll() {
       var GRADIENT_POSITIONS = ["80% 55%", "69% 34%", "8% 6%", "41% 38%", "86% 85%", "82% 18%", "51% 4%"];
