@@ -186,10 +186,154 @@
       max-width: 22ch;
     }
 
-    .hero h1 span {
+    .hero h1 .hero-title-em {
       color: var(--accent);
       font-style: italic;
       font-weight: 500;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .reveal-text-word {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: baseline;
+      gap: 0.02em;
+      vertical-align: baseline;
+    }
+
+    .reveal-letter {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+      transform-origin: center bottom;
+      animation: revealLetterEnter 0.58s cubic-bezier(0.22, 1.12, 0.36, 1) both;
+      animation-delay: calc(var(--i) * 0.08s);
+    }
+
+    .reveal-letter__base {
+      position: relative;
+      z-index: 1;
+      color: inherit;
+      transition: opacity 0.12s ease;
+    }
+
+    .reveal-letter__img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      margin: 0;
+      padding: 0;
+      font: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      font-weight: inherit;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: 0% center;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      opacity: 0;
+      pointer-events: none;
+      transition:
+        opacity 0.12s ease,
+        background-position 3s ease-in-out;
+    }
+
+    .reveal-letter:hover .reveal-letter__base {
+      opacity: 0;
+    }
+
+    .reveal-letter:hover .reveal-letter__img {
+      opacity: 1;
+      background-position: 12% center;
+    }
+
+    .reveal-letter__flash {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      padding: 0;
+      font: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      font-weight: inherit;
+      color: #ef4444;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .reveal-text-word--flash .reveal-letter__flash {
+      animation: revealLetterFlash 0.4s ease-in-out forwards;
+      animation-delay: calc(var(--i) * 0.05s);
+    }
+
+    @keyframes revealLetterEnter {
+      0% {
+        transform: scale(0);
+        opacity: 0;
+      }
+      58% {
+        transform: scale(1.07);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    @keyframes revealLetterFlash {
+      0% {
+        opacity: 0;
+      }
+      12% {
+        opacity: 1;
+      }
+      68% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal-letter {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+
+      .reveal-letter__img {
+        transition: none;
+      }
+
+      .reveal-letter__flash {
+        display: none !important;
+      }
     }
 
     .hero p {
@@ -317,6 +461,15 @@
       color: var(--text);
     }
 
+    .btn-glass--cyan .btn-glass__lens {
+      background-color: rgba(77, 171, 247, 0.28);
+    }
+
+    .btn-glass--cyan .btn-glass__text {
+      color: #eaf6ff;
+      text-shadow: 0 1px 3px rgba(6, 28, 52, 0.55);
+    }
+
     @media (hover: hover) {
       .btn-glass:not(:disabled):hover {
         transform: scale(1.03);
@@ -328,6 +481,10 @@
 
       .btn-glass--accent:not(:disabled):hover .btn-glass__lens {
         background-color: rgba(232, 197, 71, 0.26);
+      }
+
+      .btn-glass--cyan:not(:disabled):hover .btn-glass__lens {
+        background-color: rgba(116, 192, 252, 0.4);
       }
     }
 
@@ -809,6 +966,10 @@
       .fluid-glass-cursor {
         display: none !important;
       }
+
+      .copy-salute-root {
+        display: none !important;
+      }
     }
 
     #quiz-result {
@@ -880,15 +1041,53 @@
       border-radius: 4px 16px 4px 16px;
     }
 
-    .btn-copy-plan.btn-glass:not(:disabled):hover .btn-glass__lens {
+    .btn-copy-plan.btn-glass--cyan:not(:disabled):hover .btn-glass__lens {
       box-shadow:
-        inset 0 0 0 1px rgba(232, 197, 71, 0.35),
+        inset 0 0 0 1px rgba(165, 216, 255, 0.45),
         inset 1.8px 3px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.95)),
-        inset -2px -2px 0 -2px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.75)),
-        inset -3px -8px 1px -6px rgba(255, 255, 255, calc(var(--glass-reflex-light) * 0.5)),
-        inset -0.3px -1px 4px 0 rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.12)),
-        inset -1.5px 2.5px 0 -2px rgba(0, 0, 0, calc(var(--glass-reflex-dark) * 0.18)),
-        0 4px 14px rgba(0, 0, 0, 0.12);
+        inset -2px -2px 0 -2px rgba(200, 230, 255, calc(var(--glass-reflex-light) * 0.55)),
+        inset -3px -8px 1px -6px rgba(77, 171, 247, 0.22),
+        inset -0.3px -1px 4px 0 rgba(0, 24, 48, calc(var(--glass-reflex-dark) * 0.2)),
+        inset -1.5px 2.5px 0 -2px rgba(0, 40, 72, calc(var(--glass-reflex-dark) * 0.22)),
+        0 4px 18px rgba(40, 120, 200, 0.22);
+    }
+
+    @keyframes copySaluteBurst {
+      0% {
+        transform: translate(0, 0) rotate(0deg) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(var(--sx), var(--sy)) rotate(220deg) scale(0.15);
+        opacity: 0;
+      }
+    }
+
+    .copy-salute-root {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10000;
+      contain: strict;
+    }
+
+    .copy-salute-particle,
+    .copy-salute-star {
+      position: fixed;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      pointer-events: none;
+      will-change: transform, opacity;
+      animation: copySaluteBurst 0.9s cubic-bezier(0.18, 0.82, 0.32, 1) forwards;
+    }
+
+    .copy-salute-star {
+      width: 10px;
+      height: 10px;
+      margin: -5px 0 0 -5px;
+      background: radial-gradient(circle at 35% 35%, #ffffff 0%, #a5d8ff 35%, rgba(77, 171, 247, 0.2) 68%, transparent 72%);
+      box-shadow: 0 0 10px rgba(165, 216, 255, 0.9);
     }
 
     .copy-feedback {
@@ -1197,7 +1396,13 @@
       <div class="border-glow-inner">
       <p class="hero-kicker">Сейчас · в теле · здесь</p>
       <div>
-        <h1>Осознанность — это <span>тихая суперсила</span>, которая возвращает тебя в настоящий момент</h1>
+        <h1 class="hero-title">
+          <span class="visually-hidden">Осознанность</span><span
+            id="hero-reveal-word"
+            class="reveal-text-word"
+            aria-hidden="true"
+          ></span><span class="hero-title-rest"> — это <span class="hero-title-em">тихая суперсила</span>, которая возвращает тебя в настоящий момент</span>
+        </h1>
         <p>
           Когда мы действуем на автопилоте, день проходит в спешке и усталости.
           Осознанность помогает замечать свои мысли, эмоции и реакции — и выбирать, как жить, а не просто реагировать.
@@ -1338,6 +1543,70 @@
     <footer>Осознанность начинается с одного глубокого вдоха.</footer>
   </main>
 
+  <script>
+    (function initHeroRevealWord() {
+      var images = [
+        "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1518837695005-2083093ee35b?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1519904981063-b0cf448d479e?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+        "https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+      ];
+      var word = "Осознанность";
+      var letterDelay = 0.08;
+      var springDuration = 600;
+
+      function run() {
+        var mount = document.getElementById("hero-reveal-word");
+        if (!mount) {
+          return;
+        }
+        var letters = Array.from(word);
+        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        mount.textContent = "";
+        letters.forEach(function (ch, i) {
+          var letter = document.createElement("span");
+          letter.className = "reveal-letter";
+          letter.style.setProperty("--i", String(i));
+
+          var base = document.createElement("span");
+          base.className = "reveal-letter__base";
+          base.textContent = ch;
+
+          var img = document.createElement("span");
+          img.className = "reveal-letter__img";
+          img.textContent = ch;
+          img.style.backgroundImage = "url(\"" + images[i % images.length] + "\")";
+
+          var flash = document.createElement("span");
+          flash.className = "reveal-letter__flash";
+          flash.textContent = ch;
+
+          letter.appendChild(base);
+          letter.appendChild(img);
+          letter.appendChild(flash);
+          mount.appendChild(letter);
+        });
+
+        if (!reduced && letters.length > 0) {
+          var totalDelay = (letters.length - 1) * letterDelay * 1000 + springDuration;
+          setTimeout(function () {
+            mount.classList.add("reveal-text-word--flash");
+          }, totalDelay);
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run);
+      } else {
+        run();
+      }
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
     (function initMagicRingsBackground() {
@@ -2010,6 +2279,62 @@
       }, 500);
     }
 
+    function playCopySalute(btn) {
+      if (!btn || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+        return;
+      }
+      var rect = btn.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var root = document.createElement("div");
+      root.className = "copy-salute-root";
+      root.setAttribute("aria-hidden", "true");
+      document.body.appendChild(root);
+
+      var colors = ["#6ec9ff", "#4dabf7", "#a5d8ff", "#ffffff", "#74c0fc", "#ffd43b", "#b8e8ff"];
+      var n = 44;
+      var i;
+      for (i = 0; i < n; i++) {
+        var p = document.createElement("div");
+        p.className = "copy-salute-particle";
+        var angle = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.55;
+        var burst = i % 4 === 0 ? 1.2 : 0.78;
+        var speed = (88 + Math.random() * 105) * burst;
+        var vx = Math.cos(angle) * speed;
+        var vy = Math.sin(angle) * speed - 52;
+        p.style.setProperty("--sx", vx + "px");
+        p.style.setProperty("--sy", vy + "px");
+        var sz = 4 + Math.random() * 5;
+        p.style.width = sz + "px";
+        p.style.height = sz + "px";
+        p.style.margin = -sz / 2 + "px 0 0 " + -sz / 2 + "px";
+        p.style.background = colors[Math.floor(Math.random() * colors.length)];
+        p.style.animationDelay = i * 0.006 + "s";
+        p.style.left = cx + "px";
+        p.style.top = cy + "px";
+        root.appendChild(p);
+      }
+
+      for (i = 0; i < 14; i++) {
+        var s = document.createElement("div");
+        s.className = "copy-salute-star";
+        var ang2 = Math.random() * Math.PI * 2;
+        var sp = 125 + Math.random() * 95;
+        s.style.setProperty("--sx", Math.cos(ang2) * sp + "px");
+        s.style.setProperty("--sy", Math.sin(ang2) * sp - 65 + "px");
+        s.style.animationDelay = 0.04 + Math.random() * 0.1 + "s";
+        s.style.left = cx + "px";
+        s.style.top = cy + "px";
+        root.appendChild(s);
+      }
+
+      setTimeout(function () {
+        if (root.parentNode) {
+          root.parentNode.removeChild(root);
+        }
+      }, 1050);
+    }
+
     function mountPlanShapeBlur(mount, userOpts) {
       var THREE = window.THREE;
       if (!THREE || !mount) {
@@ -2299,7 +2624,7 @@
       heading.textContent = "Короткий план на неделю";
       var copyBtn = document.createElement("button");
       copyBtn.type = "button";
-      copyBtn.className = "btn-copy-plan btn-glass btn-glass--ghost";
+      copyBtn.className = "btn-copy-plan btn-glass btn-glass--cyan";
       copyBtn.id = "copy-plan";
       var copyLens = document.createElement("span");
       copyLens.className = "btn-glass__lens";
@@ -2360,11 +2685,12 @@
       if (!btn || !lastPlanClipboard) {
         return;
       }
+      playCopySalute(btn);
       const feedback = document.getElementById("copy-plan-feedback");
       function showFb(text, ok) {
         if (feedback) {
           feedback.textContent = text;
-          feedback.style.color = ok ? "var(--accent)" : "#ffb4b4";
+          feedback.style.color = ok ? "#7bdcff" : "#ffb4b4";
         }
       }
       if (navigator.clipboard && navigator.clipboard.writeText) {
