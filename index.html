@@ -89,20 +89,22 @@
       padding: 36px clamp(18px, 4vw, 48px) 64px;
     }
 
-    .hero {
+    .hero.border-glow-card {
+      position: relative;
+      margin-bottom: clamp(28px, 5vw, 48px);
+      transform: translate3d(0, 0, 0.01px) rotate(-0.35deg);
+      box-shadow: var(--shadow-lift);
+    }
+
+    .hero.border-glow-card > .border-glow-inner {
       position: relative;
       padding: clamp(28px, 4vw, 48px) clamp(22px, 3vw, 44px) 40px;
-      margin-bottom: clamp(28px, 5vw, 48px);
       background:
         linear-gradient(135deg, rgba(232, 197, 71, 0.06) 0%, transparent 42%),
         var(--panel);
-      border: 1px solid var(--stroke);
-      border-radius: var(--radius-hero);
-      box-shadow: var(--shadow-lift);
-      transform: rotate(-0.35deg);
     }
 
-    .hero::before {
+    .hero.border-glow-card > .border-glow-inner::before {
       content: "";
       position: absolute;
       top: 18px;
@@ -112,6 +114,8 @@
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
       opacity: 0.85;
       border-radius: 2px;
+      z-index: 2;
+      pointer-events: none;
     }
 
     .hero-kicker {
@@ -125,7 +129,7 @@
     }
 
     @media (min-width: 800px) {
-      .hero {
+      .hero.border-glow-card > .border-glow-inner {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
         gap: 28px 40px;
@@ -320,18 +324,20 @@
       line-height: 1.55;
     }
 
-    .practice {
+    .practice.border-glow-card {
       position: relative;
       margin: 0 0 clamp(36px, 5vw, 56px);
-      padding: 32px 28px 36px 32px;
       margin-left: clamp(0px, 2vw, 28px);
-      background: var(--panel);
-      border: 1px solid var(--stroke);
-      border-radius: 2px 28px 24px 4px;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
     }
 
-    .practice::before {
+    .practice.border-glow-card > .border-glow-inner {
+      position: relative;
+      padding: 32px 28px 36px 32px;
+      background: var(--panel);
+    }
+
+    .practice.border-glow-card > .border-glow-inner::before {
       content: "";
       position: absolute;
       left: 0;
@@ -340,6 +346,8 @@
       width: 4px;
       border-radius: 2px;
       background: linear-gradient(180deg, var(--accent), rgba(232, 197, 71, 0.2));
+      z-index: 2;
+      pointer-events: none;
     }
 
     .practice h2 {
@@ -374,16 +382,18 @@
       font-weight: 600;
     }
 
-    .quiz {
+    .quiz.border-glow-card {
       position: relative;
-      background: linear-gradient(165deg, rgba(36, 32, 25, 0.97) 0%, var(--panel) 100%);
-      border: 1px solid var(--stroke);
-      border-radius: 28px 6px 32px 8px;
-      padding: clamp(24px, 3vw, 36px);
       box-shadow: var(--shadow-lift);
     }
 
-    .quiz::after {
+    .quiz.border-glow-card > .border-glow-inner {
+      position: relative;
+      padding: clamp(24px, 3vw, 36px);
+      background: linear-gradient(165deg, rgba(36, 32, 25, 0.97) 0%, var(--panel) 100%);
+    }
+
+    .quiz.border-glow-card > .border-glow-inner::after {
       content: "";
       position: absolute;
       width: 140px;
@@ -393,6 +403,7 @@
       border: 1px solid rgba(232, 197, 71, 0.2);
       border-radius: 50%;
       pointer-events: none;
+      z-index: 2;
     }
 
     .quiz h2 {
@@ -403,7 +414,7 @@
       max-width: 28ch;
     }
 
-    .quiz > p {
+    .quiz .border-glow-inner > p {
       margin: 0 0 22px;
       color: var(--muted);
       max-width: 48ch;
@@ -594,6 +605,13 @@
       .card:hover {
         transform: none;
       }
+
+      .border-glow-card::before,
+      .border-glow-card::after,
+      .border-glow-card > .edge-light {
+        opacity: 0 !important;
+        transition: none !important;
+      }
     }
 
     #quiz-result {
@@ -678,6 +696,171 @@
       margin-bottom: 0;
     }
 
+    /* —— BorderGlow (адаптация react-bits / shadcn) —— */
+    .border-glow-card {
+      --edge-proximity: 0;
+      --cursor-angle: 45deg;
+      --edge-sensitivity: 30;
+      --color-sensitivity: calc(var(--edge-sensitivity) + 20);
+      --border-radius: 28px;
+      --glow-padding: 40px;
+      --cone-spread: 25;
+
+      position: relative;
+      border-radius: var(--border-radius);
+      isolation: isolate;
+      transform: translate3d(0, 0, 0.01px);
+      display: grid;
+      border: 1px solid rgb(255 255 255 / 14%);
+      background: var(--card-bg, #1c1915);
+      overflow: visible;
+      box-shadow:
+        rgba(0, 0, 0, 0.12) 0 1px 2px,
+        rgba(0, 0, 0, 0.1) 0 4px 12px,
+        rgba(0, 0, 0, 0.12) 0 16px 40px;
+    }
+
+    .border-glow-card::before,
+    .border-glow-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      transition: opacity 0.25s ease-out;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .border-glow-card:not(:hover):not(.sweep-active)::before,
+    .border-glow-card:not(:hover):not(.sweep-active)::after,
+    .border-glow-card:not(:hover):not(.sweep-active) > .edge-light {
+      opacity: 0;
+      transition: opacity 0.75s ease-in-out;
+    }
+
+    .border-glow-card::before {
+      border: 1px solid transparent;
+      background:
+        linear-gradient(var(--card-bg, #1c1915) 0 100%) padding-box,
+        linear-gradient(rgb(255 255 255 / 0%) 0% 100%) border-box,
+        var(--gradient-one) border-box,
+        var(--gradient-two) border-box,
+        var(--gradient-three) border-box,
+        var(--gradient-four) border-box,
+        var(--gradient-five) border-box,
+        var(--gradient-six) border-box,
+        var(--gradient-seven) border-box,
+        var(--gradient-base) border-box;
+
+      opacity: calc((var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+
+      mask-image: conic-gradient(
+        from var(--cursor-angle) at center,
+        black calc(var(--cone-spread) * 1%),
+        transparent calc((var(--cone-spread) + 15) * 1%),
+        transparent calc((100 - var(--cone-spread) - 15) * 1%),
+        black calc((100 - var(--cone-spread)) * 1%)
+      );
+      -webkit-mask-image: conic-gradient(
+        from var(--cursor-angle) at center,
+        black calc(var(--cone-spread) * 1%),
+        transparent calc((var(--cone-spread) + 15) * 1%),
+        transparent calc((100 - var(--cone-spread) - 15) * 1%),
+        black calc((100 - var(--cone-spread)) * 1%)
+      );
+    }
+
+    .border-glow-card::after {
+      border: 1px solid transparent;
+      background:
+        var(--gradient-one) padding-box,
+        var(--gradient-two) padding-box,
+        var(--gradient-three) padding-box,
+        var(--gradient-four) padding-box,
+        var(--gradient-five) padding-box,
+        var(--gradient-six) padding-box,
+        var(--gradient-seven) padding-box,
+        var(--gradient-base) padding-box;
+
+      mask-image:
+        linear-gradient(to bottom, black, black),
+        radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+        radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 33% 66%, black 5%, transparent 40%),
+        conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+      -webkit-mask-image:
+        linear-gradient(to bottom, black, black),
+        radial-gradient(ellipse at 50% 50%, black 40%, transparent 65%),
+        radial-gradient(ellipse at 66% 66%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 33% 33%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 66% 33%, black 5%, transparent 40%),
+        radial-gradient(ellipse at 33% 66%, black 5%, transparent 40%),
+        conic-gradient(from var(--cursor-angle) at center, transparent 5%, black 15%, black 85%, transparent 95%);
+
+      mask-composite: subtract, add, add, add, add, add;
+      opacity: calc(var(--fill-opacity, 0.5) * (var(--edge-proximity) - var(--color-sensitivity)) / (100 - var(--color-sensitivity)));
+      mix-blend-mode: soft-light;
+    }
+
+    .border-glow-card > .edge-light {
+      position: absolute;
+      inset: calc(var(--glow-padding) * -1);
+      border-radius: inherit;
+      transition: opacity 0.25s ease-out;
+      pointer-events: none;
+      z-index: 1;
+
+      mask-image: conic-gradient(
+        from var(--cursor-angle) at center,
+        black 2.5%,
+        transparent 10%,
+        transparent 90%,
+        black 97.5%
+      );
+      -webkit-mask-image: conic-gradient(
+        from var(--cursor-angle) at center,
+        black 2.5%,
+        transparent 10%,
+        transparent 90%,
+        black 97.5%
+      );
+
+      opacity: calc((var(--edge-proximity) - var(--edge-sensitivity)) / (100 - var(--edge-sensitivity)));
+      mix-blend-mode: plus-lighter;
+    }
+
+    .border-glow-card > .edge-light::before {
+      content: "";
+      position: absolute;
+      inset: var(--glow-padding);
+      border-radius: inherit;
+      box-shadow:
+        inset 0 0 0 1px var(--glow-color, hsl(42deg 75% 62% / 100%)),
+        inset 0 0 1px 0 var(--glow-color-60, hsl(42deg 75% 62% / 60%)),
+        inset 0 0 3px 0 var(--glow-color-50, hsl(42deg 75% 62% / 50%)),
+        inset 0 0 6px 0 var(--glow-color-40, hsl(42deg 75% 62% / 40%)),
+        inset 0 0 15px 0 var(--glow-color-30, hsl(42deg 75% 62% / 30%)),
+        inset 0 0 25px 2px var(--glow-color-20, hsl(42deg 75% 62% / 20%)),
+        inset 0 0 50px 2px var(--glow-color-10, hsl(42deg 75% 62% / 10%)),
+        0 0 1px 0 var(--glow-color-60, hsl(42deg 75% 62% / 60%)),
+        0 0 3px 0 var(--glow-color-50, hsl(42deg 75% 62% / 50%)),
+        0 0 6px 0 var(--glow-color-40, hsl(42deg 75% 62% / 40%)),
+        0 0 15px 0 var(--glow-color-30, hsl(42deg 75% 62% / 30%)),
+        0 0 25px 2px var(--glow-color-20, hsl(42deg 75% 62% / 20%)),
+        0 0 50px 2px var(--glow-color-10, hsl(42deg 75% 62% / 10%));
+    }
+
+    .border-glow-inner {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: visible;
+      z-index: 3;
+      border-radius: inherit;
+    }
+
     footer {
       margin-top: 48px;
       padding-top: 22px;
@@ -692,7 +875,22 @@
 </head>
 <body>
   <main class="container">
-    <section class="hero fade-in delay-1">
+    <section
+      class="hero border-glow-card fade-in delay-1"
+      data-border-glow
+      data-edge-sensitivity="30"
+      data-glow-color="42 72 58"
+      data-card-bg="#1c1915"
+      data-border-radius="3px 42px 10px 28px"
+      data-glow-radius="44"
+      data-glow-intensity="1"
+      data-cone-spread="25"
+      data-fill-opacity="0.42"
+      data-glow-colors="#e8c547,#7a9b82,#d4a574"
+      data-glow-animated="true"
+    >
+      <span class="edge-light" aria-hidden="true"></span>
+      <div class="border-glow-inner">
       <p class="hero-kicker">Сейчас · в теле · здесь</p>
       <div>
         <h1>Осознанность — это <span>тихая суперсила</span>, которая возвращает тебя в настоящий момент</h1>
@@ -701,6 +899,7 @@
           Осознанность помогает замечать свои мысли, эмоции и реакции — и выбирать, как жить, а не просто реагировать.
         </p>
         <button type="button" id="start-practice" class="hero-cta">Начать практику</button>
+      </div>
       </div>
     </section>
 
@@ -724,7 +923,23 @@
       </article>
     </section>
 
-    <section class="practice fade-in delay-3" id="practice">
+    <section
+      class="practice border-glow-card fade-in delay-3"
+      id="practice"
+      data-border-glow
+      data-edge-sensitivity="28"
+      data-glow-color="40 70 55"
+      data-card-bg="#1c1915"
+      data-border-radius="2px 28px 24px 4px"
+      data-glow-radius="36"
+      data-glow-intensity="0.95"
+      data-cone-spread="24"
+      data-fill-opacity="0.38"
+      data-glow-colors="#e8c547,#89b89a,#c9a46d"
+      data-glow-animated="false"
+    >
+      <span class="edge-light" aria-hidden="true"></span>
+      <div class="border-glow-inner">
       <h2>Практика «1 минута здесь и сейчас»</h2>
       <p>Эта короткая техника помогает быстро вернуть внимание в тело и снизить внутренний шум.</p>
       <ol class="practice-steps">
@@ -732,9 +947,25 @@
         <li>Назови про себя 3 звука вокруг, 2 ощущения в теле и 1 эмоцию внутри.</li>
         <li>Спроси себя: «Что сейчас действительно важно для меня?»</li>
       </ol>
+      </div>
     </section>
 
-    <section class="quiz fade-in delay-4">
+    <section
+      class="quiz border-glow-card fade-in delay-4"
+      data-border-glow
+      data-edge-sensitivity="30"
+      data-glow-color="42 72 58"
+      data-card-bg="#1c1915"
+      data-border-radius="28px 6px 32px 8px"
+      data-glow-radius="40"
+      data-glow-intensity="1"
+      data-cone-spread="25"
+      data-fill-opacity="0.45"
+      data-glow-colors="#e8c547,#7a9b82,#d4a574"
+      data-glow-animated="false"
+    >
+      <span class="edge-light" aria-hidden="true"></span>
+      <div class="border-glow-inner">
       <h2>Расширенный тест: насколько ты осознан(а) в течение дня?</h2>
       <p>Выбери по одному варианту в каждом из 6 вопросов.</p>
 
@@ -786,12 +1017,213 @@
 
       <div id="quiz-result" aria-live="polite"></div>
       <div id="quiz-plan" class="quiz-plan" aria-live="polite"></div>
+      </div>
     </section>
 
     <footer>Осознанность начинается с одного глубокого вдоха.</footer>
   </main>
 
   <script>
+    (function initBorderGlowAll() {
+      var GRADIENT_POSITIONS = ["80% 55%", "69% 34%", "8% 6%", "41% 38%", "86% 85%", "82% 18%", "51% 4%"];
+      var GRADIENT_KEYS = ["--gradient-one", "--gradient-two", "--gradient-three", "--gradient-four", "--gradient-five", "--gradient-six", "--gradient-seven"];
+      var COLOR_MAP = [0, 1, 2, 0, 1, 2, 1];
+
+      function parseHSL(hslStr) {
+        var match = String(hslStr).match(/([\d.]+)\s*([\d.]+)%?\s*([\d.]+)%?/);
+        if (!match) return { h: 42, s: 72, l: 58 };
+        return { h: parseFloat(match[1]), s: parseFloat(match[2]), l: parseFloat(match[3]) };
+      }
+
+      function buildGlowVars(glowColor, intensity) {
+        var parsed = parseHSL(glowColor);
+        var base = parsed.h + "deg " + parsed.s + "% " + parsed.l + "%";
+        var opacities = [100, 60, 50, 40, 30, 20, 10];
+        var keys = ["", "-60", "-50", "-40", "-30", "-20", "-10"];
+        var vars = {};
+        for (var i = 0; i < opacities.length; i++) {
+          vars["--glow-color" + keys[i]] = "hsl(" + base + " / " + Math.min(opacities[i] * intensity, 100) + "%)";
+        }
+        return vars;
+      }
+
+      function buildGradientVars(colors) {
+        var vars = {};
+        for (var i = 0; i < 7; i++) {
+          var c = colors[Math.min(COLOR_MAP[i], colors.length - 1)];
+          vars[GRADIENT_KEYS[i]] = "radial-gradient(at " + GRADIENT_POSITIONS[i] + ", " + c + " 0px, transparent 50%)";
+        }
+        vars["--gradient-base"] = "linear-gradient(" + colors[0] + " 0 100%)";
+        return vars;
+      }
+
+      function easeOutCubic(x) {
+        return 1 - Math.pow(1 - x, 3);
+      }
+
+      function easeInCubic(x) {
+        return x * x * x;
+      }
+
+      function animateValue(opts) {
+        var start = opts.start !== undefined ? opts.start : 0;
+        var end = opts.end !== undefined ? opts.end : 100;
+        var duration = opts.duration !== undefined ? opts.duration : 1000;
+        var delay = opts.delay !== undefined ? opts.delay : 0;
+        var ease = opts.ease || easeOutCubic;
+        var onUpdate = opts.onUpdate;
+        var onEnd = opts.onEnd;
+        var t0 = performance.now() + delay;
+        function tick() {
+          var elapsed = performance.now() - t0;
+          var t = Math.min(elapsed / duration, 1);
+          onUpdate(start + (end - start) * ease(t));
+          if (t < 1) requestAnimationFrame(tick);
+          else if (onEnd) onEnd();
+        }
+        setTimeout(function () {
+          requestAnimationFrame(tick);
+        }, 0);
+      }
+
+      function getCenterOfElement(el) {
+        var rect = el.getBoundingClientRect();
+        return [rect.width / 2, rect.height / 2];
+      }
+
+      function getEdgeProximity(el, x, y) {
+        var c = getCenterOfElement(el);
+        var cx = c[0];
+        var cy = c[1];
+        var dx = x - cx;
+        var dy = y - cy;
+        var kx = Infinity;
+        var ky = Infinity;
+        if (dx !== 0) kx = cx / Math.abs(dx);
+        if (dy !== 0) ky = cy / Math.abs(dy);
+        return Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
+      }
+
+      function getCursorAngle(el, x, y) {
+        var c = getCenterOfElement(el);
+        var dx = x - c[0];
+        var dy = y - c[1];
+        if (dx === 0 && dy === 0) return 0;
+        var radians = Math.atan2(dy, dx);
+        var degrees = radians * (180 / Math.PI) + 90;
+        if (degrees < 0) degrees += 360;
+        return degrees;
+      }
+
+      function applyGlowStyle(card, opts) {
+        var glowVars = buildGlowVars(opts.glowColor, opts.glowIntensity);
+        var g;
+        for (g in glowVars) {
+          if (Object.prototype.hasOwnProperty.call(glowVars, g)) {
+            card.style.setProperty(g, glowVars[g]);
+          }
+        }
+        var gv = buildGradientVars(opts.colors);
+        for (g in gv) {
+          if (Object.prototype.hasOwnProperty.call(gv, g)) {
+            card.style.setProperty(g, gv[g]);
+          }
+        }
+        card.style.setProperty("--card-bg", opts.backgroundColor);
+        card.style.setProperty("--edge-sensitivity", String(opts.edgeSensitivity));
+        card.style.setProperty("--border-radius", opts.borderRadius);
+        card.style.setProperty("--glow-padding", opts.glowRadius + "px");
+        card.style.setProperty("--cone-spread", String(opts.coneSpread));
+        card.style.setProperty("--fill-opacity", String(opts.fillOpacity));
+      }
+
+      function runSweep(card) {
+        var angleStart = 110;
+        var angleEnd = 465;
+        card.classList.add("sweep-active");
+        card.style.setProperty("--cursor-angle", angleStart + "deg");
+        animateValue({
+          duration: 500,
+          onUpdate: function (v) {
+            card.style.setProperty("--edge-proximity", String(v));
+          },
+        });
+        animateValue({
+          ease: easeInCubic,
+          duration: 1500,
+          end: 50,
+          onUpdate: function (v) {
+            card.style.setProperty("--cursor-angle", ((angleEnd - angleStart) * (v / 100) + angleStart) + "deg");
+          },
+        });
+        animateValue({
+          ease: easeOutCubic,
+          delay: 1500,
+          duration: 2250,
+          start: 50,
+          end: 100,
+          onUpdate: function (v) {
+            card.style.setProperty("--cursor-angle", ((angleEnd - angleStart) * (v / 100) + angleStart) + "deg");
+          },
+        });
+        animateValue({
+          ease: easeInCubic,
+          delay: 2500,
+          duration: 1500,
+          start: 100,
+          end: 0,
+          onUpdate: function (v) {
+            card.style.setProperty("--edge-proximity", String(v));
+          },
+          onEnd: function () {
+            card.classList.remove("sweep-active");
+          },
+        });
+      }
+
+      function initBorderGlow(card) {
+        var colorsStr = card.getAttribute("data-glow-colors") || "#e8c547,#7a9b82,#d4a574";
+        var colors = colorsStr.split(",").map(function (s) {
+          return s.trim();
+        });
+        var opts = {
+          edgeSensitivity: parseFloat(card.getAttribute("data-edge-sensitivity") || "30"),
+          glowColor: card.getAttribute("data-glow-color") || "42 72 58",
+          backgroundColor: card.getAttribute("data-card-bg") || "#1c1915",
+          borderRadius: card.getAttribute("data-border-radius") || "28px",
+          glowRadius: parseFloat(card.getAttribute("data-glow-radius") || "40"),
+          glowIntensity: parseFloat(card.getAttribute("data-glow-intensity") || "1"),
+          coneSpread: parseFloat(card.getAttribute("data-cone-spread") || "25"),
+          fillOpacity: parseFloat(card.getAttribute("data-fill-opacity") || "0.45"),
+          colors: colors,
+        };
+
+        applyGlowStyle(card, opts);
+
+        function handlePointerMove(e) {
+          var rect = card.getBoundingClientRect();
+          var x = e.clientX - rect.left;
+          var y = e.clientY - rect.top;
+          var edge = getEdgeProximity(card, x, y);
+          var angle = getCursorAngle(card, x, y);
+          card.style.setProperty("--edge-proximity", (edge * 100).toFixed(3));
+          card.style.setProperty("--cursor-angle", angle.toFixed(3) + "deg");
+        }
+
+        card.addEventListener("pointermove", handlePointerMove);
+
+        var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var wantAnim = card.getAttribute("data-glow-animated") === "true";
+        if (wantAnim && !reduced) {
+          runSweep(card);
+        }
+      }
+
+      document.querySelectorAll("[data-border-glow]").forEach(function (el) {
+        initBorderGlow(el);
+      });
+    })();
+
     const quizForm = document.getElementById("mindfulness-quiz");
     const resultBlock = document.getElementById("quiz-result");
     const planBlock = document.getElementById("quiz-plan");
