@@ -583,6 +583,11 @@
       grid-column: 10 / span 3;
     }
 
+    .card:nth-child(5) {
+      grid-column: 6 / span 7;
+      grid-row: 3;
+    }
+
     @media (max-width: 840px) {
       .cards {
         grid-template-columns: 1fr 1fr;
@@ -592,7 +597,8 @@
       .card:nth-child(1),
       .card:nth-child(2),
       .card:nth-child(3),
-      .card:nth-child(4) {
+      .card:nth-child(4),
+      .card:nth-child(5) {
         grid-column: auto;
         grid-row: auto;
         min-height: 0;
@@ -1418,6 +1424,10 @@
       <article class="card">
         <h3>Ясные решения</h3>
         <p>Ты реже действуешь импульсивно и чаще выбираешь то, что действительно важно.</p>
+      </article>
+      <article class="card">
+        <h3>Новые возможности</h3>
+        <p>Твое внимание расширяется, ты начинаешь замечать возможности и используешь их для своего благосостояния!</p>
       </article>
     </section>
 
