@@ -564,10 +564,46 @@
       max-width: 28ch;
     }
 
-    .quiz .border-glow-inner > p {
+    .quiz .border-glow-inner > .quiz-particles-foreground > p {
       margin: 0 0 22px;
       color: var(--muted);
       max-width: 48ch;
+    }
+
+    .quiz-particles-wrap {
+      position: relative;
+      margin: 0 0 12px;
+      min-height: clamp(320px, 48vh, 560px);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(244, 238, 232, 0.08);
+      isolation: isolate;
+    }
+
+    .quiz-particles-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .quiz-particles-bg canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .quiz-particles-foreground {
+      position: relative;
+      z-index: 1;
+      padding: 18px 20px 12px;
+      background: linear-gradient(
+        180deg,
+        rgba(14, 12, 10, 0.82) 0%,
+        rgba(18, 16, 14, 0.55) 45%,
+        rgba(20, 18, 15, 0.42) 100%
+      );
+      pointer-events: auto;
     }
 
     fieldset {
@@ -759,6 +795,15 @@
       .border-glow-card > .edge-light {
         opacity: 0 !important;
         transition: none !important;
+      }
+
+      .quiz-particles-bg,
+      .quiz-particles-bg canvas {
+        display: none !important;
+      }
+
+      .quiz-particles-wrap {
+        min-height: 0 !important;
       }
     }
 
@@ -1160,6 +1205,9 @@
     >
       <span class="edge-light" aria-hidden="true"></span>
       <div class="border-glow-inner">
+      <div class="quiz-particles-wrap" id="quiz-particles-wrap">
+        <div id="quiz-particles-host" class="quiz-particles-bg" aria-hidden="true"></div>
+        <div class="quiz-particles-foreground">
       <h2>Расширенный тест: насколько ты осознан(а) в течение дня?</h2>
       <p>Выбери по одному варианту в каждом из 6 вопросов.</p>
 
@@ -1211,6 +1259,8 @@
           <span class="btn-glass__text">Узнать результат</span>
         </button>
       </form>
+        </div>
+      </div>
 
       <div id="quiz-result" aria-live="polite"></div>
       <div id="quiz-plan" class="quiz-plan" aria-live="polite"></div>
@@ -2251,6 +2301,288 @@
       resultBlock.style.color = "var(--ok)";
       renderPlan(message, planSteps);
     });
+  </script>
+  <script type="module">
+    (async function initQuizParticlesOGL() {
+      if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        return;
+      }
+
+      const wrap = document.getElementById("quiz-particles-wrap");
+      const host = document.getElementById("quiz-particles-host");
+      if (!wrap || !host) {
+        return;
+      }
+
+      let Renderer;
+      let Camera;
+      let Geometry;
+      let Program;
+      let Mesh;
+      try {
+        const ogl = await import("https://cdn.jsdelivr.net/npm/ogl@1.0.5/+esm");
+        Renderer = ogl.Renderer;
+        Camera = ogl.Camera;
+        Geometry = ogl.Geometry;
+        Program = ogl.Program;
+        Mesh = ogl.Mesh;
+      } catch (err) {
+        console.warn("Quiz particles: не удалось загрузить OGL", err);
+        return;
+      }
+
+      const particleCount = 200;
+      const particleSpread = 10;
+      const speed = 0.1;
+      const particleColors = ["#fff5e0", "#f4e8c8", "#ffffff"];
+      const moveParticlesOnHover = true;
+      const particleHoverFactor = 1;
+      const alphaParticles = false;
+      const particleBaseSize = 100;
+      const sizeRandomness = 1;
+      const cameraDistance = 20;
+      const disableRotation = false;
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+      const defaultColors = ["#ffffff", "#ffffff", "#ffffff"];
+
+      function hexToRgb(hex) {
+        var h = String(hex).replace(/^#/, "");
+        if (h.length === 3) {
+          h = h
+            .split("")
+            .map(function (c) {
+              return c + c;
+            })
+            .join("");
+        }
+        var int = parseInt(h, 16);
+        var r = ((int >> 16) & 255) / 255;
+        var g = ((int >> 8) & 255) / 255;
+        var b = (int & 255) / 255;
+        return [r, g, b];
+      }
+
+      const vertex = /* glsl */ `
+        attribute vec3 position;
+        attribute vec4 random;
+        attribute vec3 color;
+
+        uniform mat4 modelMatrix;
+        uniform mat4 viewMatrix;
+        uniform mat4 projectionMatrix;
+        uniform float uTime;
+        uniform float uSpread;
+        uniform float uBaseSize;
+        uniform float uSizeRandomness;
+
+        varying vec4 vRandom;
+        varying vec3 vColor;
+
+        void main() {
+          vRandom = random;
+          vColor = color;
+
+          vec3 pos = position * uSpread;
+          pos.z *= 10.0;
+
+          vec4 mPos = modelMatrix * vec4(pos, 1.0);
+          float t = uTime;
+          mPos.x += sin(t * random.z + 6.28 * random.w) * mix(0.1, 1.5, random.x);
+          mPos.y += sin(t * random.y + 6.28 * random.x) * mix(0.1, 1.5, random.w);
+          mPos.z += sin(t * random.w + 6.28 * random.y) * mix(0.1, 1.5, random.z);
+
+          vec4 mvPos = viewMatrix * mPos;
+
+          if (uSizeRandomness == 0.0) {
+            gl_PointSize = uBaseSize;
+          } else {
+            gl_PointSize = (uBaseSize * (1.0 + uSizeRandomness * (random.x - 0.5))) / length(mvPos.xyz);
+          }
+
+          gl_Position = projectionMatrix * mvPos;
+        }
+      `;
+
+      const fragment = /* glsl */ `
+        precision highp float;
+
+        uniform float uTime;
+        uniform float uAlphaParticles;
+        varying vec4 vRandom;
+        varying vec3 vColor;
+
+        void main() {
+          vec2 uv = gl_PointCoord.xy;
+          float d = length(uv - vec2(0.5));
+
+          if(uAlphaParticles < 0.5) {
+            if(d > 0.5) {
+              discard;
+            }
+            gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), 1.0);
+          } else {
+            float circle = smoothstep(0.5, 0.4, d) * 0.8;
+            gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), circle);
+          }
+        }
+      `;
+
+      const mouse = { x: 0, y: 0 };
+
+      const renderer = new Renderer({
+        dpr: pixelRatio,
+        depth: false,
+        alpha: true,
+      });
+      const gl = renderer.gl;
+      host.appendChild(gl.canvas);
+      gl.clearColor(0, 0, 0, 0);
+
+      const camera = new Camera(gl, { fov: 15 });
+      camera.position.set(0, 0, cameraDistance);
+
+      function resize() {
+        var w = wrap.clientWidth;
+        var h = wrap.clientHeight;
+        if (w < 1 || h < 1) {
+          return;
+        }
+        renderer.setSize(w, h);
+        camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
+      }
+
+      window.addEventListener("resize", resize, false);
+
+      var ro =
+        typeof ResizeObserver !== "undefined"
+          ? new ResizeObserver(function () {
+              resize();
+            })
+          : null;
+      if (ro) {
+        ro.observe(wrap);
+      }
+      resize();
+
+      function onPointerMove(e) {
+        var rect = wrap.getBoundingClientRect();
+        var inside =
+          e.clientX >= rect.left &&
+          e.clientX <= rect.right &&
+          e.clientY >= rect.top &&
+          e.clientY <= rect.bottom;
+        if (inside) {
+          mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        } else {
+          mouse.x *= 0.94;
+          mouse.y *= 0.94;
+        }
+      }
+
+      if (moveParticlesOnHover) {
+        window.addEventListener("pointermove", onPointerMove, { passive: true });
+      }
+
+      var count = particleCount;
+      var positions = new Float32Array(count * 3);
+      var randoms = new Float32Array(count * 4);
+      var colors = new Float32Array(count * 3);
+      var palette = particleColors.length > 0 ? particleColors : defaultColors;
+
+      for (var i = 0; i < count; i++) {
+        var x;
+        var y;
+        var z;
+        var len;
+        do {
+          x = Math.random() * 2 - 1;
+          y = Math.random() * 2 - 1;
+          z = Math.random() * 2 - 1;
+          len = x * x + y * y + z * z;
+        } while (len > 1 || len === 0);
+        var r = Math.cbrt(Math.random());
+        positions.set([x * r, y * r, z * r], i * 3);
+        randoms.set([Math.random(), Math.random(), Math.random(), Math.random()], i * 4);
+        var col = hexToRgb(palette[Math.floor(Math.random() * palette.length)]);
+        colors.set(col, i * 3);
+      }
+
+      var geometry = new Geometry(gl, {
+        position: { size: 3, data: positions },
+        random: { size: 4, data: randoms },
+        color: { size: 3, data: colors },
+      });
+
+      var program = new Program(gl, {
+        vertex: vertex,
+        fragment: fragment,
+        uniforms: {
+          uTime: { value: 0 },
+          uSpread: { value: particleSpread },
+          uBaseSize: { value: particleBaseSize * pixelRatio },
+          uSizeRandomness: { value: sizeRandomness },
+          uAlphaParticles: { value: alphaParticles ? 1 : 0 },
+        },
+        transparent: true,
+        depthTest: false,
+      });
+
+      var particles = new Mesh(gl, { mode: gl.POINTS, geometry: geometry, program: program });
+
+      var animationFrameId;
+      var lastTime = performance.now();
+      var elapsed = 0;
+
+      function update(t) {
+        animationFrameId = requestAnimationFrame(update);
+        var delta = t - lastTime;
+        lastTime = t;
+        elapsed += delta * speed;
+
+        program.uniforms.uTime.value = elapsed * 0.001;
+
+        if (moveParticlesOnHover) {
+          particles.position.x = -mouse.x * particleHoverFactor;
+          particles.position.y = -mouse.y * particleHoverFactor;
+        } else {
+          particles.position.x = 0;
+          particles.position.y = 0;
+        }
+
+        if (!disableRotation) {
+          particles.rotation.x = Math.sin(elapsed * 0.0002) * 0.1;
+          particles.rotation.y = Math.cos(elapsed * 0.0005) * 0.15;
+          particles.rotation.z += 0.01 * speed;
+        }
+
+        renderer.render({ scene: particles, camera: camera });
+      }
+
+      animationFrameId = requestAnimationFrame(update);
+
+      window.addEventListener(
+        "pagehide",
+        function cleanup() {
+          window.removeEventListener("pagehide", cleanup);
+          window.removeEventListener("resize", resize, false);
+          if (moveParticlesOnHover) {
+            window.removeEventListener("pointermove", onPointerMove);
+          }
+          if (ro) {
+            ro.disconnect();
+          }
+          cancelAnimationFrame(animationFrameId);
+          if (host.contains(gl.canvas)) {
+            host.removeChild(gl.canvas);
+          }
+          geometry.remove();
+          program.remove();
+        },
+        { once: true }
+      );
+    })();
   </script>
 </body>
 </html>
