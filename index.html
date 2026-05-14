@@ -640,8 +640,51 @@
 
     .practice.border-glow-card > .border-glow-inner {
       position: relative;
+      padding: 0;
+      background: transparent;
+    }
+
+    .practice-galaxy-wrap {
+      position: relative;
+      min-height: clamp(260px, 42vh, 420px);
+      border-radius: inherit;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .practice-galaxy-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .practice-galaxy-bg canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .practice-galaxy-foreground {
+      position: relative;
+      z-index: 1;
       padding: 32px 28px 36px 32px;
-      background: var(--panel);
+      background: linear-gradient(
+        165deg,
+        rgba(22, 20, 17, 0.9) 0%,
+        rgba(28, 25, 21, 0.82) 45%,
+        rgba(28, 25, 21, 0.76) 100%
+      );
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .practice-galaxy-bg {
+        display: none !important;
+      }
+
+      .practice-galaxy-foreground {
+        background: var(--panel);
+      }
     }
 
     .practice.border-glow-card > .border-glow-inner::before {
@@ -1395,6 +1438,9 @@
     >
       <span class="edge-light" aria-hidden="true"></span>
       <div class="border-glow-inner">
+      <div class="practice-galaxy-wrap" id="practice-galaxy-wrap">
+        <div id="practice-galaxy-host" class="practice-galaxy-bg" aria-hidden="true"></div>
+        <div class="practice-galaxy-foreground">
       <h2>Практика «1 минута здесь и сейчас»</h2>
       <p>Эта короткая техника помогает быстро вернуть внимание в тело и снизить внутренний шум.</p>
       <ol class="practice-steps">
@@ -1402,6 +1448,8 @@
         <li>Назови про себя 3 звука вокруг, 2 ощущения в теле и 1 эмоцию внутри.</li>
         <li>Спроси себя: «Что сейчас действительно важно для меня?»</li>
       </ol>
+        </div>
+      </div>
       </div>
     </section>
 
@@ -2921,5 +2969,6 @@
       );
     })();
   </script>
+  <script type="module" src="practice-galaxy.js"></script>
 </body>
 </html>
