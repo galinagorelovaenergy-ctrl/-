@@ -625,17 +625,40 @@
     }
 
     .quiz-plan {
+      position: relative;
       margin-top: 22px;
-      padding: 20px 22px;
+      min-height: 200px;
       border-radius: 10px 24px 12px 20px;
-      background: rgba(12, 10, 8, 0.55);
+      background: rgba(12, 10, 8, 0.72);
       border: 1px solid var(--stroke);
       display: none;
       backdrop-filter: blur(10px);
+      overflow: hidden;
     }
 
     .quiz-plan.visible {
       display: block;
+    }
+
+    .quiz-plan-shapeblur {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.42;
+      mix-blend-mode: soft-light;
+    }
+
+    .quiz-plan-shapeblur canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .quiz-plan-body {
+      position: relative;
+      z-index: 1;
+      padding: 20px 22px;
     }
 
     .quiz-plan-header {
@@ -674,11 +697,20 @@
 
     .copy-feedback {
       display: block;
-      margin-top: 12px;
       font-size: 0.9rem;
       font-weight: 500;
       color: var(--accent);
       min-height: 1.3em;
+    }
+
+    .quiz-plan-body .copy-feedback {
+      margin-top: 12px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .quiz-plan-shapeblur {
+        display: none !important;
+      }
     }
 
     .quiz-plan ul {
@@ -1023,6 +1055,7 @@
     <footer>Осознанность начинается с одного глубокого вдоха.</footer>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script>
     (function initBorderGlowAll() {
       var GRADIENT_POSITIONS = ["80% 55%", "69% 34%", "8% 6%", "41% 38%", "86% 85%", "82% 18%", "51% 4%"];
@@ -1287,22 +1320,294 @@
       }, 500);
     }
 
+    function mountPlanShapeBlur(mount, userOpts) {
+      var THREE = window.THREE;
+      if (!THREE || !mount) {
+        return function () {};
+      }
+
+      var opts = {
+        variation: 0,
+        pixelRatioProp: Math.min(window.devicePixelRatio || 1, 2),
+        shapeSize: 1,
+        roundness: 0.5,
+        borderSize: 0.05,
+        circleSize: 0.25,
+        circleEdge: 1,
+      };
+      if (userOpts) {
+        for (var key in userOpts) {
+          if (Object.prototype.hasOwnProperty.call(userOpts, key)) {
+            opts[key] = userOpts[key];
+          }
+        }
+      }
+
+      var active = true;
+      var animationFrameId = 0;
+      var lastTime = 0;
+
+      var vMouse = new THREE.Vector2();
+      var vMouseDamp = new THREE.Vector2();
+      var vResolution = new THREE.Vector2();
+
+      var w = 1;
+      var h = 1;
+
+      var scene = new THREE.Scene();
+      var camera = new THREE.OrthographicCamera();
+      camera.position.z = 1;
+
+      var renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          alpha: true,
+          antialias: true,
+          powerPreference: "low-power",
+        });
+      } catch (e) {
+        return function () {};
+      }
+      renderer.setClearColor(0x000000, 0);
+      mount.appendChild(renderer.domElement);
+
+      var vertexShader =
+        "varying vec2 v_texcoord;\n" +
+        "void main() {\n" +
+        "  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n" +
+        "  v_texcoord = uv;\n" +
+        "}\n";
+
+      var fragmentShader = [
+        "varying vec2 v_texcoord;",
+        "uniform vec2 u_mouse;",
+        "uniform vec2 u_resolution;",
+        "uniform float u_pixelRatio;",
+        "uniform float u_shapeSize;",
+        "uniform float u_roundness;",
+        "uniform float u_borderSize;",
+        "uniform float u_circleSize;",
+        "uniform float u_circleEdge;",
+        "#ifndef PI",
+        "#define PI 3.1415926535897932384626433832795",
+        "#endif",
+        "#ifndef TWO_PI",
+        "#define TWO_PI 6.2831853071795864769252867665590",
+        "#endif",
+        "#ifndef VAR",
+        "#define VAR 0",
+        "#endif",
+        "#ifndef FNC_COORD",
+        "#define FNC_COORD",
+        "vec2 coord(in vec2 p) {",
+        "  p = p / u_resolution.xy;",
+        "  if (u_resolution.x > u_resolution.y) {",
+        "    p.x *= u_resolution.x / u_resolution.y;",
+        "    p.x += (u_resolution.y - u_resolution.x) / u_resolution.y / 2.0;",
+        "  } else {",
+        "    p.y *= u_resolution.y / u_resolution.x;",
+        "    p.y += (u_resolution.x - u_resolution.y) / u_resolution.x / 2.0;",
+        "  }",
+        "  p -= 0.5;",
+        "  p *= vec2(-1.0, 1.0);",
+        "  return p;",
+        "}",
+        "#endif",
+        "#define st0 coord(gl_FragCoord.xy)",
+        "#define mx coord(u_mouse * u_pixelRatio)",
+        "float sdRoundRect(vec2 p, vec2 b, float r) {",
+        "  vec2 d = abs(p - 0.5) * 4.2 - b + vec2(r);",
+        "  return min(max(d.x, d.y), 0.0) + length(max(d, 0.0)) - r;",
+        "}",
+        "float sdCircle(in vec2 st, in vec2 center) {",
+        "  return length(st - center) * 2.0;",
+        "}",
+        "float sdPoly(in vec2 p, in float w, in int sides) {",
+        "  float a = atan(p.x, p.y) + PI;",
+        "  float r = TWO_PI / float(sides);",
+        "  float d = cos(floor(0.5 + a / r) * r - a) * length(max(abs(p) * 1.0, 0.0));",
+        "  return d * 2.0 - w;",
+        "}",
+        "float aastep(float threshold, float value) {",
+        "  float afwidth = length(vec2(dFdx(value), dFdy(value))) * 0.70710678118654757;",
+        "  return smoothstep(threshold - afwidth, threshold + afwidth, value);",
+        "}",
+        "float fill(in float x) { return 1.0 - aastep(0.0, x); }",
+        "float fill(float x, float size, float edge) {",
+        "  return 1.0 - smoothstep(size - edge, size + edge, x);",
+        "}",
+        "float stroke(in float d, in float t) { return (1.0 - aastep(t, abs(d))); }",
+        "float stroke(float x, float size, float w, float edge) {",
+        "  float d = smoothstep(size - edge, size + edge, x + w * 0.5) - smoothstep(size - edge, size + edge, x - w * 0.5);",
+        "  return clamp(d, 0.0, 1.0);",
+        "}",
+        "float strokeAA(float x, float size, float w, float edge) {",
+        "  float afwidth = length(vec2(dFdx(x), dFdy(x))) * 0.70710678;",
+        "  float d = smoothstep(size - edge - afwidth, size + edge + afwidth, x + w * 0.5)",
+        "        - smoothstep(size - edge - afwidth, size + edge + afwidth, x - w * 0.5);",
+        "  return clamp(d, 0.0, 1.0);",
+        "}",
+        "void main() {",
+        "  vec2 st = st0 + 0.5;",
+        "  vec2 posMouse = mx * vec2(1., -1.) + 0.5;",
+        "  float size = u_shapeSize;",
+        "  float roundness = u_roundness;",
+        "  float borderSize = u_borderSize;",
+        "  float circleSize = u_circleSize;",
+        "  float circleEdge = u_circleEdge;",
+        "  float sdfCircle = fill(",
+        "    sdCircle(st, posMouse),",
+        "    circleSize,",
+        "    circleEdge",
+        "  );",
+        "  float sdf;",
+        "  if (VAR == 0) {",
+        "    sdf = sdRoundRect(st, vec2(size), roundness);",
+        "    sdf = strokeAA(sdf, 0.0, borderSize, sdfCircle) * 4.0;",
+        "  } else if (VAR == 1) {",
+        "    sdf = sdCircle(st, vec2(0.5));",
+        "    sdf = fill(sdf, 0.6, sdfCircle) * 1.2;",
+        "  } else if (VAR == 2) {",
+        "    sdf = sdCircle(st, vec2(0.5));",
+        "    sdf = strokeAA(sdf, 0.58, 0.02, sdfCircle) * 4.0;",
+        "  } else if (VAR == 3) {",
+        "    sdf = sdPoly(st - vec2(0.5, 0.45), 0.3, 3);",
+        "    sdf = fill(sdf, 0.05, sdfCircle) * 1.4;",
+        "  }",
+        "  vec3 color = vec3(1.0);",
+        "  float alpha = sdf;",
+        "  gl_FragColor = vec4(color.rgb, alpha);",
+        "}",
+      ].join("\n");
+
+      var geo = new THREE.PlaneGeometry(1, 1);
+      var material = new THREE.ShaderMaterial({
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        uniforms: {
+          u_mouse: { value: vMouseDamp },
+          u_resolution: { value: vResolution },
+          u_pixelRatio: { value: opts.pixelRatioProp },
+          u_shapeSize: { value: opts.shapeSize },
+          u_roundness: { value: opts.roundness },
+          u_borderSize: { value: opts.borderSize },
+          u_circleSize: { value: opts.circleSize },
+          u_circleEdge: { value: opts.circleEdge },
+        },
+        defines: { VAR: opts.variation },
+        transparent: true,
+        depthWrite: false,
+        extensions: { derivatives: true },
+      });
+
+      var quad = new THREE.Mesh(geo, material);
+      scene.add(quad);
+
+      function onPointerMove(e) {
+        if (!active) return;
+        var rect = mount.getBoundingClientRect();
+        vMouse.set(e.clientX - rect.left, e.clientY - rect.top);
+      }
+
+      mount.addEventListener("pointermove", onPointerMove, { passive: true });
+
+      function resize() {
+        if (!active) return;
+        w = mount.clientWidth || 1;
+        h = mount.clientHeight || 1;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        renderer.setPixelRatio(dpr);
+        renderer.setSize(w, h, false);
+
+        camera.left = -w / 2;
+        camera.right = w / 2;
+        camera.top = h / 2;
+        camera.bottom = -h / 2;
+        camera.updateProjectionMatrix();
+
+        quad.scale.set(w, h, 1);
+        vResolution.set(w, h).multiplyScalar(dpr);
+        material.uniforms.u_pixelRatio.value = dpr;
+      }
+
+      resize();
+      window.addEventListener("resize", resize);
+
+      var ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+      if (ro) {
+        ro.observe(mount);
+      }
+
+      vMouse.set(w / 2, h / 2);
+      vMouseDamp.copy(vMouse);
+
+      function update() {
+        if (!active) return;
+        var time = performance.now() * 0.001;
+        var dt = lastTime > 0 ? Math.min(time - lastTime, 0.05) : 1 / 60;
+        lastTime = time;
+
+        vMouseDamp.x = THREE.MathUtils.damp(vMouseDamp.x, vMouse.x, 8, dt);
+        vMouseDamp.y = THREE.MathUtils.damp(vMouseDamp.y, vMouse.y, 8, dt);
+
+        try {
+          renderer.render(scene, camera);
+        } catch (e) {
+          /* WebGL недоступен */
+        }
+        animationFrameId = requestAnimationFrame(update);
+      }
+      update();
+
+      return function disposePlanShapeBlur() {
+        active = false;
+        cancelAnimationFrame(animationFrameId);
+        window.removeEventListener("resize", resize);
+        if (ro) {
+          ro.disconnect();
+        }
+        mount.removeEventListener("pointermove", onPointerMove);
+        if (renderer.domElement && renderer.domElement.parentNode === mount) {
+          mount.removeChild(renderer.domElement);
+        }
+        geo.dispose();
+        material.dispose();
+        renderer.dispose();
+        if (renderer.forceContextLoss) {
+          renderer.forceContextLoss();
+        }
+      };
+    }
+
     function renderPlan(resultText, steps) {
+      if (planBlock._disposePlanShapeBlur) {
+        planBlock._disposePlanShapeBlur();
+        planBlock._disposePlanShapeBlur = null;
+      }
+
       planBlock.textContent = "";
-      const lines = steps.map(function (step, i) {
-        return (i + 1) + ". " + step;
+      planBlock.className = "quiz-plan visible";
+
+      var stepsThree = steps.slice(0, 3);
+      var lines = stepsThree.map(function (step, i) {
+        return i + 1 + ". " + step;
       });
       lastPlanClipboard =
-        resultText +
-        "\n\n" +
-        "Короткий план на неделю\n" +
-        lines.join("\n");
+        resultText + "\n\n" + "Короткий план на неделю\n" + lines.join("\n");
 
-      const header = document.createElement("div");
+      var blurHost = document.createElement("div");
+      blurHost.className = "quiz-plan-shapeblur";
+      blurHost.setAttribute("aria-hidden", "true");
+
+      var body = document.createElement("div");
+      body.className = "quiz-plan-body";
+
+      var header = document.createElement("div");
       header.className = "quiz-plan-header";
-      const heading = document.createElement("h3");
+      var heading = document.createElement("h3");
       heading.textContent = "Короткий план на неделю";
-      const copyBtn = document.createElement("button");
+      var copyBtn = document.createElement("button");
       copyBtn.type = "button";
       copyBtn.className = "btn-copy-plan";
       copyBtn.id = "copy-plan";
@@ -1310,25 +1615,44 @@
       header.appendChild(heading);
       header.appendChild(copyBtn);
 
-      const list = document.createElement("ul");
-      steps.forEach(function (step) {
-        const li = document.createElement("li");
+      var list = document.createElement("ul");
+      stepsThree.forEach(function (step) {
+        var li = document.createElement("li");
         li.textContent = step;
         list.appendChild(li);
       });
 
-      const feedback = document.createElement("span");
+      var feedback = document.createElement("span");
       feedback.className = "copy-feedback";
       feedback.id = "copy-plan-feedback";
       feedback.setAttribute("aria-live", "polite");
 
-      planBlock.appendChild(header);
-      planBlock.appendChild(list);
-      planBlock.appendChild(feedback);
-      planBlock.classList.add("visible");
+      planBlock.appendChild(blurHost);
+      planBlock.appendChild(body);
+      body.appendChild(header);
+      body.appendChild(list);
+      body.appendChild(feedback);
+
+      var reducedMotion =
+        window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reducedMotion && window.THREE) {
+        planBlock._disposePlanShapeBlur = mountPlanShapeBlur(blurHost, {
+          variation: 0,
+          pixelRatioProp: window.devicePixelRatio || 1,
+          shapeSize: 1,
+          roundness: 0.5,
+          borderSize: 0.05,
+          circleSize: 0.25,
+          circleEdge: 1,
+        });
+      }
     }
 
     function hidePlan() {
+      if (planBlock._disposePlanShapeBlur) {
+        planBlock._disposePlanShapeBlur();
+        planBlock._disposePlanShapeBlur = null;
+      }
       planBlock.textContent = "";
       planBlock.classList.remove("visible");
       lastPlanClipboard = "";
@@ -1409,8 +1733,6 @@
           "Каждый день утром до телефона: 1 минута наблюдения за дыханием.",
           "Поставь 3 напоминания-паузы (обед, полдень, вечер): встать, расслабить плечи, 3 медленных вдоха.",
           "Один приём пищи в день — только еда, без экранов.",
-          "Перед сном выпиши одну строку: «Сегодня я заметил(а)…»",
-          "В конце недели вернись к тесту и сравни самочувствие.",
         ];
       } else if (score <= 6) {
         message = "Уровень 2/5. Осознанность появляется эпизодически. Добавь ритуал: 5 минут тишины утром и вечером.";
@@ -1418,8 +1740,6 @@
           "Утро и вечер по 5 минут: тихая пауза (сидеть, слушать дыхание, без контента).",
           "При раздражении — правило 10 секунд: пауза, вдох, потом слова или действие.",
           "Два раза в день спрашивай себя: «Что со мной с телом прямо сейчас?»",
-          "Раз в неделю пройди блок практики на странице сверху вниз, как чеклист.",
-          "Празднуй маленький прогресс: отметка в календаре за каждый день без пропуска ритуала.",
         ];
       } else if (score <= 8) {
         message = "Уровень 3/5. Хорошая база уже есть. Твоя следующая точка роста — больше внимания к телу и дыханию.";
@@ -1427,8 +1747,6 @@
           "Ежедневно 7–10 минут: перемещение внимания по телу (стопы, живот, лицо).",
           "Перед задачами: назови намерение в одном предложении («Сейчас я делаю X, чтобы…»).",
           "В стрессе добавь расширенный выдох (вдох 4 — выдох 6–8) три раза подряд.",
-          "Выбери «якорь» осознанности (колено, ключи у двери) и в эти точки делай один осознанный вдох.",
-          "Под конец недели выбери одну привычку (сон, телефон, еда) и осознанно её смягчи.",
         ];
       } else if (score <= 10) {
         message = "Уровень 4/5. Ты умеешь отслеживать состояние и чаще выбираешь реакцию осознанно. Закрепи привычку короткими практиками каждый день.";
@@ -1436,8 +1754,6 @@
           "Ежедневно 10–15 минут формальной практики или прогулка без аудио.",
           "Раз в день наблюдай мысль как облако: заметил(а), подписал(а), отпустил(а).",
           "Раз в неделю — час или полдня без уведомлений, заранее запланируй его.",
-          "Калибровка после сложных разговоров: «Что я чувствую? что мне нужно?» записать в два пункта.",
-          "Поделись с кем-то одной наблюденной паузой — закрепляй навык в жизни, не только в голове.",
         ];
       } else {
         message = "Уровень 5/5. Сильный навык осознанности: ты замечаешь свои состояния и управляешь вниманием даже в напряжённые моменты.";
@@ -1445,8 +1761,6 @@
           "Поддерживай базу: 10–20 минут в день — та практика, которая тебе заходит.",
           "Один раз в неделю — «ревизия намерений»: три приоритета и одна вещь, которую отпускаешь.",
           "Напряжённые дни усили контактом с телом: прогулка, стопы, температура воды как якорь.",
-          "Помощь другим: одна маленькая фраза осознанного слушания в день (без советов сразу).",
-          "Смотри не только на результат недели — отмечай качество присутствия в маленьких моментах.",
         ];
       }
 
