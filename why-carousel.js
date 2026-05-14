@@ -35,18 +35,33 @@
       return;
     }
 
-    var slides = Array.prototype.slice.call(track.querySelectorAll(".why-carousel-item"));
-    var n = slides.length;
-    if (n === 0) {
+    var originals = Array.prototype.slice.call(track.querySelectorAll(".why-carousel-item"));
+    var realN = originals.length;
+    if (realN === 0) {
       return;
     }
+
+    var loopEnabled = realN > 1;
+    if (loopEnabled) {
+      var lastClone = originals[realN - 1].cloneNode(true);
+      lastClone.classList.add("why-carousel-item--clone");
+      lastClone.setAttribute("aria-hidden", "true");
+      var firstClone = originals[0].cloneNode(true);
+      firstClone.classList.add("why-carousel-item--clone");
+      firstClone.setAttribute("aria-hidden", "true");
+      track.insertBefore(lastClone, originals[0]);
+      track.appendChild(firstClone);
+    }
+
+    var slides = Array.prototype.slice.call(track.querySelectorAll(".why-carousel-item"));
+    var totalSlides = slides.length;
 
     var dots = Array.prototype.slice.call(root.querySelectorAll(".why-carousel-dot"));
     var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     var itemWidth = 278;
     var trackItemOffset = itemWidth + GAP;
-    var position = 0;
+    var position = loopEnabled ? 1 : 0;
     var targetX = 0;
     var currentX = 0;
     var dragging = false;
@@ -60,11 +75,18 @@
     var rafId = 0;
 
     function minX() {
-      return -Math.max(n - 1, 0) * trackItemOffset;
+      return -(Math.max(totalSlides - 1, 0)) * trackItemOffset;
     }
 
     function clamp(v, a, b) {
       return Math.max(a, Math.min(b, v));
+    }
+
+    function realIndexFromPosition() {
+      if (!loopEnabled) {
+        return position;
+      }
+      return (position - 1 + realN) % realN;
     }
 
     function recalcSizes() {
@@ -83,22 +105,37 @@
     }
 
     function setDots() {
+      var active = realIndexFromPosition();
       dots.forEach(function (d, i) {
-        var on = i === position;
+        var on = i === active;
         d.classList.toggle("is-active", on);
         d.setAttribute("aria-selected", on ? "true" : "false");
         d.tabIndex = on ? 0 : -1;
       });
+      root.setAttribute("data-active-index", String(active));
     }
 
-    function goTo(index) {
-      position = clamp(index, 0, n - 1);
+    function goToReal(realIdx) {
+      realIdx = clamp(realIdx, 0, realN - 1);
+      if (loopEnabled) {
+        position = realIdx + 1;
+      } else {
+        position = realIdx;
+      }
       targetX = -position * trackItemOffset;
-      if (reduced) {
+      if (reduced || !dragging) {
         currentX = targetX;
       }
       setDots();
-      root.setAttribute("data-active-index", String(position));
+    }
+
+    function setPositionBySlideIndex(slideIdx) {
+      position = clamp(slideIdx, 0, Math.max(totalSlides - 1, 0));
+      targetX = -position * trackItemOffset;
+      if (reduced || !dragging) {
+        currentX = targetX;
+      }
+      setDots();
     }
 
     function updateTransforms() {
@@ -120,6 +157,15 @@
         var dx = targetX - currentX;
         if (Math.abs(dx) < SNAP_EPS) {
           currentX = targetX;
+          if (loopEnabled && realN > 1) {
+            if (position === 0) {
+              position = realN;
+              targetX = currentX = -position * trackItemOffset;
+            } else if (position === totalSlides - 1) {
+              position = 1;
+              targetX = currentX = -position * trackItemOffset;
+            }
+          }
         } else {
           currentX += dx * SPRING;
         }
@@ -177,10 +223,10 @@
       }
 
       if (direction !== 0) {
-        goTo(position + direction);
+        setPositionBySlideIndex(position + direction);
       } else {
         var nearest = Math.round(-currentX / trackItemOffset);
-        goTo(nearest);
+        setPositionBySlideIndex(nearest);
       }
 
       if (reduced) {
@@ -191,17 +237,25 @@
     function scheduleAutoplay() {
       clearInterval(autoplayTimer);
       autoplayTimer = null;
-      if (reduced || n <= 1) {
+      if (reduced || realN <= 1) {
         return;
       }
       autoplayTimer = setInterval(function () {
         if (isHovered) {
           return;
         }
-        if (position >= n - 1) {
+        if (!loopEnabled) {
+          if (position >= realN - 1) {
+            return;
+          }
+          setPositionBySlideIndex(position + 1);
           return;
         }
-        goTo(position + 1);
+        if (position < totalSlides - 1) {
+          setPositionBySlideIndex(position + 1);
+        } else {
+          setPositionBySlideIndex(1);
+        }
       }, 3000);
     }
 
@@ -209,7 +263,7 @@
       dot.addEventListener("click", function () {
         var idx = parseInt(dot.getAttribute("data-index"), 10);
         if (!isNaN(idx)) {
-          goTo(idx);
+          goToReal(idx);
         }
       });
     });
@@ -229,10 +283,26 @@
     root.addEventListener("keydown", function (e) {
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        goTo(position - 1);
+        if (loopEnabled) {
+          if (position > 0) {
+            setPositionBySlideIndex(position - 1);
+          } else {
+            setPositionBySlideIndex(realN);
+          }
+        } else {
+          setPositionBySlideIndex(Math.max(0, position - 1));
+        }
       } else if (e.key === "ArrowRight") {
         e.preventDefault();
-        goTo(position + 1);
+        if (loopEnabled) {
+          if (position < totalSlides - 1) {
+            setPositionBySlideIndex(position + 1);
+          } else {
+            setPositionBySlideIndex(1);
+          }
+        } else {
+          setPositionBySlideIndex(Math.min(realN - 1, position + 1));
+        }
       }
     });
 
@@ -240,14 +310,13 @@
       "resize",
       function () {
         recalcSizes();
-        goTo(position);
+        goToReal(realIndexFromPosition());
       },
       false
     );
 
     recalcSizes();
-    goTo(0);
-    currentX = targetX;
+    goToReal(0);
     updateTransforms();
     rafId = requestAnimationFrame(tick);
     scheduleAutoplay();
